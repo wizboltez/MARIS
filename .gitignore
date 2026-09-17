@@ -1,0 +1,30 @@
+# Data (too large for git; document how to regenerate instead)
+data/raw/
+data/processed/
+*.zip
+
+# Ultralytics full run artifacts (checkpoints/logs) -- large, regenerable; the
+# small best_model.pt copy in models/ IS committed on purpose (see README)
+runs/
+*.cache
+
+# annotated/ is regenerated per predict.py run and can grow unbounded;
+# the plastic_predictions.csv itself is committed on purpose
+outputs/predictions/annotated/
+
+# Generic pretrained checkpoints auto-downloaded by Ultralytics (not our
+# trained model -- that's models/plastic_detector/best_model.pt, which IS committed)
+/yolo*.pt
+/weights/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+venv/
+.venv/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,33 @@
+# Core ML / detection
+ultralytics>=8.3.0        # YOLOv8 / YOLO11 detection & segmentation
+torch>=2.2.0
+torchvision>=0.17.0
+
+# Data handling
+numpy>=1.26.0
+pandas>=2.2.0
+pyarrow>=15.0.0           # parquet export support
+pycocotools>=2.0.7         # COCO annotation parsing
+opencv-python>=4.9.0
+Pillow>=10.2.0
+pyyaml>=6.0.1
+
+# EDA / plotting
+matplotlib>=3.8.0
+seaborn>=0.13.0
+
+# Metrics
+scikit-learn>=1.4.0
+
+# Hashing for duplicate detection
+imagehash>=4.3.1
+
+# Optional demo UI
+streamlit>=1.32.0
+
+# Notebooks
+jupyter>=1.0.0
+ipykernel>=6.29.0
+
+# Progress bars
+tqdm>=4.66.0

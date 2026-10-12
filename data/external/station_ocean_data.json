@@ -1,0 +1,65 @@
+{
+  "fetched_utc": "2026-10-12T11:16:14+00:00",
+  "stations": {
+    "Pristine Reef Sanctuary (Coral Triangle)": {
+      "noaa_crw": {
+        "source": "NOAA Coral Reef Watch 5km daily (CoastWatch ERDDAP)",
+        "sea_surface_temperature_c": 29.05,
+        "date": "2026-10-10",
+        "pixel_lat": -0.525,
+        "pixel_lon": 130.625,
+        "degree_heating_weeks": 0.0,
+        "bleaching_alert_level_code": 1,
+        "bleaching_alert_level": "Bleaching Watch"
+      }
+    },
+    "Great Barrier Reef - Outer Reef": {
+      "noaa_crw": {
+        "source": "NOAA Coral Reef Watch 5km daily (CoastWatch ERDDAP)",
+        "sea_surface_temperature_c": 25.21,
+        "date": "2026-10-10",
+        "pixel_lat": -16.875,
+        "pixel_lon": 146.225,
+        "degree_heating_weeks": 0.0,
+        "bleaching_alert_level_code": 0,
+        "bleaching_alert_level": "No Stress"
+      }
+    },
+    "Thermal Stress Hotspot (Bleaching Risk)": {
+      "noaa_crw": {
+        "source": "NOAA Coral Reef Watch 5km daily (CoastWatch ERDDAP)",
+        "sea_surface_temperature_c": 31.79,
+        "date": "2026-10-10",
+        "pixel_lat": 21.425,
+        "pixel_lon": 38.775,
+        "degree_heating_weeks": 1.19,
+        "bleaching_alert_level_code": 1,
+        "bleaching_alert_level": "Bleaching Watch"
+      }
+    },
+    "Coastal Harbor & Runoff Zone": {
+      "noaa_crw": {
+        "source": "NOAA Coral Reef Watch 5km daily (CoastWatch ERDDAP)",
+        "sea_surface_temperature_c": 30.28,
+        "date": "2026-10-10",
+        "pixel_lat": 14.525,
+        "pixel_lon": 120.925,
+        "degree_heating_weeks": 4.79,
+        "bleaching_alert_level_code": 3,
+        "bleaching_alert_level": "Alert Level 1"
+      }
+    },
+    "Hypoxic Coastal Estuary (Dead Zone Warning)": {
+      "noaa_crw": {
+        "source": "NOAA Coral Reef Watch 5km daily (CoastWatch ERDDAP)",
+        "sea_surface_temperature_c": 28.49,
+        "date": "2026-10-10",
+        "pixel_lat": 28.675,
+        "pixel_lon": -90.525,
+        "degree_heating_weeks": 7.46,
+        "bleaching_alert_level_code": 1,
+        "bleaching_alert_level": "Bleaching Watch"
+      }
+    }
+  }
+}

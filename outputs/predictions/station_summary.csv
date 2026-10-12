@@ -1,0 +1,6 @@
+station_id,region,latitude,longitude,n_survey_images,plastic_items_detected,plastic_coverage_pct,water_quality_index,marine_pollution_impact_score,impact_tier,biodiversity_loss_pct,noaa_sst_c,noaa_dhw,noaa_bleaching_alert,noaa_date
+Pristine Reef Sanctuary (Coral Triangle),"Raja Ampat, Coral Triangle",-0.52,130.65,8,6,1.16,93.1,9.2,Low,6.5,29.05,0.0,Bleaching Watch,2026-10-10
+Great Barrier Reef - Outer Reef,"Cairns Sector, Great Barrier Reef",-16.85,146.22,8,5,1.13,100.0,7.3,Low,6.0,25.21,0.0,No Stress,2026-10-10
+Thermal Stress Hotspot (Bleaching Risk),Red Sea Central Channel,21.45,38.8,8,4,0.58,68.8,17.4,Low,14.2,31.79,1.19,Bleaching Watch,2026-10-10
+Coastal Harbor & Runoff Zone,Manila Bay Outflow,14.52,120.9,8,7,12.16,48.1,19.3,Low,15.2,30.28,4.79,Alert Level 1,2026-10-10
+Hypoxic Coastal Estuary (Dead Zone Warning),Gulf Coastal Estuary,28.7,-90.5,8,4,6.94,40.5,16.5,Low,12.1,28.49,7.46,Bleaching Watch,2026-10-10

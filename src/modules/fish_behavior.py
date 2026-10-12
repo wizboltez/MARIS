@@ -133,7 +133,7 @@ def analyze_fish_behavior(
             "tracks": [],
         }
 
-    # Simulate or compute movement dynamics
+    has_motion = False
     speeds = []
     turn_angles = []
     plastic_hazards = []
@@ -144,9 +144,12 @@ def analyze_fish_behavior(
         box = np.array(fish["bbox"])
         cx, cy = (box[0] + box[2]) / 2.0, (box[1] + box[3]) / 2.0
 
-        # Deterministic pseudo-dynamic trajectory estimation based on position/size
-        speed = float(fish.get("speed", (box[2] - box[0]) * 0.15 + (i * 3.7 % 12.0) + 4.2))
-        angle = float(fish.get("turn_angle", (i * 27.3 + cx * 0.05) % 90.0))
+        # Speed / turning only exist when measured from multi-frame tracks
+        # (src.modules.fish_tracking). From a single image they are unknown -> 0,
+        # so the anomaly index then reflects plastic proximity only.
+        speed = float(fish.get("speed", 0.0))
+        angle = float(fish.get("turn_angle", 0.0))
+        has_motion = has_motion or ("speed" in fish)
         speeds.append(speed)
         turn_angles.append(angle)
 
@@ -192,7 +195,8 @@ def analyze_fish_behavior(
         "erratic_turn_rate_deg": round(avg_turn, 2),
         "plastic_proximity_hazard": round(avg_hazard * 100.0, 2),
         "behavioral_anomaly_index": round(bai, 2),
-        "behavior_state": state,
+        "behavior_state": state if has_motion else f"{state} (single image: plastic proximity only)",
+        "measurement": "multi-frame tracks" if has_motion else "single image (no motion data)",
     }
 
 
@@ -202,7 +206,10 @@ def draw_fish_tracks_and_behavior(
     stats: dict,
     plastic_boxes: list[np.ndarray] | None = None,
 ) -> np.ndarray:
-    """Overlays fish trajectories, velocity vectors, and behavioral stress annotations."""
+    """Overlays single-image fish detections, plastic proximity zones and the anomaly index.
+
+    Real multi-frame trajectories are drawn by src.modules.fish_tracking.draw_trajectories.
+    """
     out = image.copy()
     h, w = out.shape[:2]
 
@@ -225,24 +232,6 @@ def draw_fish_tracks_and_behavior(
         color = (255, 200, 0)  # BGR cyan-blue
         cv2.rectangle(out, (box[0], box[1]), (box[2], box[3]), color, 2)
 
-        # Generate trail points for visualization
-        seed_offset = (track_id * 17) % 360
-        rad = np.radians(seed_offset)
-        trail_pts = []
-        for step in range(5, 0, -1):
-            tx = int(cx - step * 6 * np.cos(rad) + np.sin(step) * 4)
-            ty = int(cy - step * 6 * np.sin(rad) + np.cos(step) * 4)
-            trail_pts.append((tx, ty))
-        trail_pts.append((cx, cy))
-
-        for p1, p2 in zip(trail_pts[:-1], trail_pts[1:]):
-            cv2.line(out, p1, p2, (0, 255, 255), 2, lineType=cv2.LINE_AA)
-
-        # Direction vector arrow
-        vx = int(18 * np.cos(rad))
-        vy = int(18 * np.sin(rad))
-        cv2.arrowedLine(out, (cx, cy), (cx + vx, cy + vy), (0, 255, 0), 2, tipLength=0.3)
-
         label = f"ID #{track_id} {cls_name} {conf:.2f}"
         (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.42, 1)
         cv2.rectangle(out, (box[0], max(0, box[1] - th - 6)), (box[0] + tw + 4, box[1]), color, -1)
@@ -262,7 +251,7 @@ def draw_fish_tracks_and_behavior(
 
 def plot_fish_behavior_summary(stats: dict, save_path: str | None = None) -> plt.Figure:
     """Generates an informative multi-panel plot of fish behavioral dynamics."""
-    fig, axes = plt.subplots(1, 3, figsize=(13, 4.2))
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.2))
 
     # Panel 1: Gauge-like bar for BAI
     bai = stats.get("behavioral_anomaly_index", 25.0)
@@ -286,15 +275,6 @@ def plot_fish_behavior_summary(stats: dict, save_path: str | None = None) -> plt
     axes[1].barh(metrics, vals, color="#3498db")
     axes[1].set_xlabel("Value")
     axes[1].set_title("Movement & Spatial Metrics", fontsize=10)
-
-    # Panel 3: Trajectory Simulation Polar Plot
-    ax_polar = fig.add_subplot(1, 3, 3, projection="polar")
-    axes[2].axis("off")  # replace with polar
-    angles = np.linspace(0, 2 * np.pi, 24)
-    r = 5 + np.sin(3 * angles) * 2 + (bai / 100.0) * np.random.uniform(1, 4, 24)
-    ax_polar.plot(angles, r, color="#9b59b6", linewidth=2)
-    ax_polar.fill(angles, r, color="#9b59b6", alpha=0.25)
-    ax_polar.set_title("Turn Dispersion Pattern", fontsize=10)
 
     fig.tight_layout()
     if save_path:

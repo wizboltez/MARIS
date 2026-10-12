@@ -1,0 +1,6 @@
+{
+  "note": "held-out split of the SYNTHETIC data: measures how well XGBoost reproduces the expert formula",
+  "mpis_r2": 0.945,
+  "mpis_mae": 2.17,
+  "biodiv_r2": 0.883
+}

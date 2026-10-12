@@ -4,8 +4,7 @@ Generates interactive geospatial maps and static publication-grade cartographic
 visualizations synthesizing:
 - Plastic pollution density heatmaps
 - Coral bleaching alerts (NOAA Coral Reef Watch integration)
-- Biodiversity vulnerability hotspots (OBIS / Reef Life Survey)
-- Survey transects & Marine Pollution Impact Scores (0-100)
+- Survey stations & Marine Pollution Impact Scores (0-100)
 """
 from __future__ import annotations
 
@@ -16,64 +15,39 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 
-def generate_global_marine_stations(n_stations: int = 65, random_seed: int = 42) -> pd.DataFrame:
-    """Generates geographically realistic marine survey stations across ocean biodiversity hotspots."""
-    rng = np.random.default_rng(random_seed)
+def tier_of(mpis: float) -> str:
+    return "Low" if mpis < 25 else "Moderate" if mpis < 50 else "High" if mpis < 75 else "Critical"
 
-    hotspots = [
-        {"region": "Coral Triangle (Raja Ampat & Sulu Sea)", "lat_center": -1.5, "lon_center": 128.0, "spread": 6.5, "risk_bias": 55},
-        {"region": "Great Barrier Reef (Australia)", "lat_center": -18.2, "lon_center": 147.5, "spread": 4.5, "risk_bias": 42},
-        {"region": "Caribbean Sea & Mesoamerican Reef", "lat_center": 16.5, "lon_center": -82.0, "spread": 7.0, "risk_bias": 62},
-        {"region": "Red Sea Coral Corridors", "lat_center": 22.0, "lon_center": 38.0, "spread": 4.0, "risk_bias": 48},
-        {"region": "Mediterranean Sea Coastal Basins", "lat_center": 36.5, "lon_center": 15.0, "spread": 8.0, "risk_bias": 68},
-        {"region": "Hawaiian Archipelago & Central Pacific", "lat_center": 21.0, "lon_center": -157.5, "spread": 5.0, "risk_bias": 32},
-        {"region": "Seychelles & Western Indian Ocean", "lat_center": -4.5, "lon_center": 55.5, "spread": 5.5, "risk_bias": 38},
-    ]
 
+def build_station_table(assessment: pd.DataFrame, stations: dict, ocean_cache: dict) -> pd.DataFrame:
+    """One row per survey station: real NOAA Coral Reef Watch values + the mean scores of
+    the survey images assigned to that station by the assessment pipeline.
+
+    (TrashCan images carry no geotags, so the image-to-station assignment is by rotation;
+    the station positions and NOAA values are real.)
+    """
     records = []
-    station_id = 1
-
-    for spot in hotspots:
-        n_in_spot = max(6, int(n_stations / len(hotspots)))
-        for _ in range(n_in_spot):
-            lat = float(spot["lat_center"] + rng.normal(0, spot["spread"] * 0.35))
-            lon = float(spot["lon_center"] + rng.normal(0, spot["spread"] * 0.35))
-
-            bias = spot["risk_bias"]
-            plastic_density = float(np.clip(rng.exponential(scale=bias * 0.4), 2.0, 150.0))
-            plastic_cov = float(np.clip(plastic_density * 0.18 + rng.normal(0, 1.5), 0.2, 42.0))
-            bsi = float(np.clip(bias * 0.6 + rng.normal(0, 12), 5.0, 95.0))
-            wqi = float(np.clip(100.0 - (bias * 0.7) + rng.normal(0, 8), 20.0, 95.0))
-
-            # Marine Pollution Impact Score
-            mpis = float(np.clip(0.35 * (plastic_cov * 2.8) + 0.30 * bsi + 0.35 * (100.0 - wqi), 5.0, 98.0))
-
-            if mpis < 25:
-                tier = "Low"
-            elif mpis < 50:
-                tier = "Moderate"
-            elif mpis < 75:
-                tier = "High"
-            else:
-                tier = "Critical"
-
-            records.append(
-                {
-                    "station_id": f"MARIS-STN-{station_id:03d}",
-                    "region": spot["region"],
-                    "latitude": round(lat, 4),
-                    "longitude": round(lon, 4),
-                    "plastic_density_items_km2": round(plastic_density, 1),
-                    "plastic_coverage_pct": round(plastic_cov, 1),
-                    "bleaching_severity_index": round(bsi, 1),
-                    "water_quality_index": round(wqi, 1),
-                    "marine_pollution_impact_score": round(mpis, 1),
-                    "impact_tier": tier,
-                    "biodiversity_loss_pct": round(mpis * 0.75, 1),
-                }
-            )
-            station_id += 1
-
+    for name, st in stations.items():
+        noaa = ocean_cache.get("stations", {}).get(name, {}).get("noaa_crw", {})
+        rows = assessment[assessment["station_region"] == st["location"]] if len(assessment) else assessment
+        mpis = float(rows["marine_pollution_impact_score"].mean()) if len(rows) else np.nan
+        records.append({
+            "station_id": name,
+            "region": st["location"],
+            "latitude": st["latitude"],
+            "longitude": st["longitude"],
+            "n_survey_images": int(len(rows)),
+            "plastic_items_detected": int(rows["plastic_count"].sum()) if len(rows) else 0,
+            "plastic_coverage_pct": round(float(rows["plastic_coverage_percentage"].mean()), 2) if len(rows) else 0.0,
+            "water_quality_index": round(float(rows["water_quality_index"].mean()), 1) if len(rows) else np.nan,
+            "marine_pollution_impact_score": round(mpis, 1),
+            "impact_tier": tier_of(mpis) if not np.isnan(mpis) else "No data",
+            "biodiversity_loss_pct": round(float(rows["predicted_biodiversity_loss_pct"].mean()), 1) if len(rows) else np.nan,
+            "noaa_sst_c": noaa.get("sea_surface_temperature_c"),
+            "noaa_dhw": noaa.get("degree_heating_weeks"),
+            "noaa_bleaching_alert": noaa.get("bleaching_alert_level", "n/a"),
+            "noaa_date": noaa.get("date"),
+        })
     return pd.DataFrame(records)
 
 
@@ -92,19 +66,20 @@ def create_interactive_plastic_map(df_stations: pd.DataFrame) -> go.Figure:
         lon="longitude",
         color="impact_tier",
         color_discrete_map=color_map,
-        size="plastic_coverage_pct",
-        hover_name="station_id",
+        size=df_stations["plastic_items_detected"] + 3,
+        hover_name="region",
         hover_data={
-            "region": True,
             "marine_pollution_impact_score": True,
-            "plastic_coverage_pct": True,
-            "bleaching_severity_index": True,
-            "water_quality_index": True,
-            "biodiversity_loss_pct": True,
+            "plastic_items_detected": True,
+            "n_survey_images": True,
+            "noaa_sst_c": True,
+            "noaa_dhw": True,
+            "noaa_bleaching_alert": True,
+            "noaa_date": True,
             "latitude": False,
             "longitude": False,
         },
-        title="<b>Global Marine Plastic Pollution & Biodiversity Impact Survey</b>",
+        title="<b>Survey Stations: Impact Score & NOAA Coral Reef Watch Status</b>",
         size_max=22,
         projection="natural earth",
     )
@@ -149,18 +124,24 @@ def plot_static_pollution_map(df_stations: pd.DataFrame, save_path: str | None =
         df_stations["longitude"],
         df_stations["latitude"],
         c=df_stations["marine_pollution_impact_score"],
-        s=df_stations["plastic_coverage_pct"] * 8 + 40,
+        s=df_stations["plastic_items_detected"] * 25 + 80,
         cmap="turbo",
         alpha=0.88,
         edgecolors="white",
         linewidths=0.6,
     )
 
+    for _, r in df_stations.iterrows():
+        ax.annotate(
+            f"{r['region']}\nMPIS {r['marine_pollution_impact_score']} | {r['noaa_bleaching_alert']}",
+            (r["longitude"], r["latitude"]), xytext=(6, 6), textcoords="offset points", color="white", fontsize=7,
+        )
+
     cbar = fig.colorbar(scatter, ax=ax, orientation="horizontal", pad=0.12, fraction=0.04)
     cbar.set_label("Marine Pollution Impact Score (0 - 100)", color="white", fontsize=10)
     cbar.ax.tick_params(colors="white")
 
-    ax.set_title("Global Geospatial Distribution of Marine Plastic Debris & Ecological Risk", color="white", fontsize=13, pad=15)
+    ax.set_title("Survey Stations: Impact Score (colour), Plastic Items (size), NOAA CRW Alert (label)", color="white", fontsize=13, pad=15)
     ax.set_xlabel("Longitude (°)", color="#a0aec0", fontsize=9)
     ax.set_ylabel("Latitude (°)", color="#a0aec0", fontsize=9)
     ax.tick_params(colors="#a0aec0")
@@ -168,6 +149,7 @@ def plot_static_pollution_map(df_stations: pd.DataFrame, save_path: str | None =
 
     ax.set_xlim(-180, 180)
     ax.set_ylim(-60, 65)
+    scatter.set_clim(0, 100)
 
     fig.tight_layout()
     if save_path:

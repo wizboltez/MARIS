@@ -6,19 +6,32 @@ Multi-modal AI Fusion Engine combining:
 - Coral reef bleaching severity index
 - Ocean water quality parameters (temp, pH, DO, salinity, turbidity)
 
-Trained with XGBoost & Ensemble Regression to predict the Marine Pollution Impact
-Score (0-100) and quantify projected biodiversity loss.
+Trained with XGBoost to predict the Marine Pollution Impact Score (0-100) and a
+projected biodiversity loss %.
+
+IMPORTANT - what this model is (and is not):
+There is no public dataset that pairs plastic / fish / coral / water measurements with
+measured biodiversity loss, so the training targets are produced by an explicit,
+hand-specified expert formula (see generate_synthetic_marine_training_data) applied to
+synthetic survey data. XGBoost therefore learns that formula; it is a documented expert
+scoring model, not one fitted to observed ecological outcomes. The direction of each
+effect is motivated by published work, e.g.
+  - Lamb et al. 2018, Science 359:460 - plastic contact raises coral disease likelihood
+  - Hughes et al. 2017, Nature 543:373 - heat stress drives mass coral bleaching
+  - Jambeck et al. 2015, Science 347:768 - scale of plastic inputs to the ocean
+but the weights themselves are assumptions. Replacing them with weights fitted to real
+survey outcomes (e.g. OBIS / Reef Life Survey) is future work.
 """
 from __future__ import annotations
 
-import os
-from pathlib import Path
+import json
 
 import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.model_selection import train_test_split
 from xgboost import XGBRegressor
 
 from src.config import PROJECT_ROOT
@@ -34,6 +47,7 @@ FEATURE_NAMES = [
     "debris_count",
     "fish_behavior_anomaly_index",
     "fish_count",
+    "coral_present",
     "coral_bleaching_severity_index",
     "coral_cover_percentage",
     "water_quality_index",
@@ -45,12 +59,20 @@ FEATURE_NAMES = [
 ]
 
 
-def generate_synthetic_marine_training_data(n_samples: int = 1500, random_seed: int = 42) -> pd.DataFrame:
-    """Generates synthetic multi-modal marine survey data calibrated to oceanic studies.
+# Share of synthetic sites without coral (e.g. deep-sea / soft-bottom, like TrashCan).
+NON_REEF_FRACTION = 0.35
 
-    Calibrated against peer-reviewed empirical marine ecology relationships
-    (e.g., Jambeck et al. plastic density, Hughes et al. coral bleaching,
-    Reef Life Survey biodiversity patterns, NOAA Coral Reef Watch).
+# Expert weights of the impact score. Reef sites: plastic, fish stress, coral
+# bleaching and poor water quality. Non-reef sites have no coral term, so its
+# weight is spread over the other three (no coral != healthy coral).
+MPIS_WEIGHTS_REEF = {"plastic": 0.32, "fish": 0.22, "coral": 0.24, "water": 0.22}
+MPIS_WEIGHTS_NON_REEF = {"plastic": 0.42, "fish": 0.29, "coral": 0.0, "water": 0.29}
+
+
+def generate_synthetic_marine_training_data(n_samples: int = 1500, random_seed: int = 42) -> pd.DataFrame:
+    """Synthetic survey data + expert-formula targets (see module docstring).
+
+    Input distributions are plausible ranges, not fitted to a real survey dataset.
     """
     rng = np.random.default_rng(random_seed)
 
@@ -86,14 +108,15 @@ def generate_synthetic_marine_training_data(n_samples: int = 1500, random_seed: 
     )
     wqi = np.clip(wqi, 10.0, 98.0)
 
-    # 3. Coral variables
-    coral_cover = np.clip(rng.normal(loc=45.0 - plastic_cov * 0.8, scale=18.0), 5.0, 85.0)
+    # 3. Coral variables (zero at non-reef sites)
+    coral_present = (rng.random(n_samples) >= NON_REEF_FRACTION).astype(float)
+    coral_cover = np.clip(rng.normal(loc=45.0 - plastic_cov * 0.8, scale=18.0), 5.0, 85.0) * coral_present
     temp_bleach_risk = np.maximum(0, temp - 28.2) * 18.0
     bsi = np.clip(
         temp_bleach_risk + (plastic_cov * 1.2) + ((100 - wqi) * 0.35) + rng.normal(0, 5, n_samples),
         0.0,
         100.0,
-    )
+    ) * coral_present
 
     # 4. Fish variables
     fish_count = np.clip(rng.poisson(lam=np.maximum(1.0, 8.0 - plastic_cov * 0.25)), 0, 25)
@@ -105,11 +128,14 @@ def generate_synthetic_marine_training_data(n_samples: int = 1500, random_seed: 
 
     # True Marine Pollution Impact Score (MPIS, 0-100)
     # Ground truth formula incorporating multi-modal interactions + non-linear saturation
+    def weight(key):
+        return np.where(coral_present > 0, MPIS_WEIGHTS_REEF[key], MPIS_WEIGHTS_NON_REEF[key])
+
     mpis = (
-        0.32 * (np.clip(plastic_cov * 3.8 + plastic_count * 3.0, 0, 100))
-        + 0.22 * fish_bai
-        + 0.24 * bsi
-        + 0.22 * (100.0 - wqi)
+        weight("plastic") * (np.clip(plastic_cov * 3.8 + plastic_count * 3.0, 0, 100))
+        + weight("fish") * fish_bai
+        + weight("coral") * bsi
+        + weight("water") * (100.0 - wqi)
         + rng.normal(0, 2.5, n_samples)
     )
     mpis = np.clip(mpis, 0.0, 100.0)
@@ -128,6 +154,7 @@ def generate_synthetic_marine_training_data(n_samples: int = 1500, random_seed: 
             "debris_count": debris_count,
             "fish_behavior_anomaly_index": fish_bai,
             "fish_count": fish_count,
+            "coral_present": coral_present,
             "coral_bleaching_severity_index": bsi,
             "coral_cover_percentage": coral_cover,
             "water_quality_index": wqi,
@@ -160,16 +187,20 @@ class MarineImpactScoringEngine:
 
         if not force_retrain and MODEL_FILE.exists() and BIODIV_MODEL_FILE.exists():
             try:
-                self.mpis_model = joblib.load(MODEL_FILE)
-                self.biodiv_model = joblib.load(BIODIV_MODEL_FILE)
-                return
+                mpis_model = joblib.load(MODEL_FILE)
+                biodiv_model = joblib.load(BIODIV_MODEL_FILE)
+                # Saved models from an older feature set are retrained below
+                if list(getattr(mpis_model, "feature_names_in_", [])) == FEATURE_NAMES:
+                    self.mpis_model, self.biodiv_model = mpis_model, biodiv_model
+                    return
             except Exception:
                 pass
 
-        # Train new XGBoost models
-        X = df[FEATURE_NAMES]
-        y_mpis = df["marine_pollution_impact_score"]
-        y_biodiv = df["biodiversity_loss_pct"]
+        # Train new XGBoost models (held-out split only to report how well the formula is learned)
+        train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)
+        X = train_df[FEATURE_NAMES]
+        y_mpis = train_df["marine_pollution_impact_score"]
+        y_biodiv = train_df["biodiversity_loss_pct"]
 
         self.mpis_model = XGBRegressor(
             n_estimators=160,
@@ -191,6 +222,15 @@ class MarineImpactScoringEngine:
         )
         self.biodiv_model.fit(X, y_biodiv)
 
+        X_test = test_df[FEATURE_NAMES]
+        self.fit_report = {
+            "note": "held-out split of the SYNTHETIC data: measures how well XGBoost reproduces the expert formula",
+            "mpis_r2": round(float(r2_score(test_df["marine_pollution_impact_score"], self.mpis_model.predict(X_test))), 3),
+            "mpis_mae": round(float(mean_absolute_error(test_df["marine_pollution_impact_score"], self.mpis_model.predict(X_test))), 2),
+            "biodiv_r2": round(float(r2_score(test_df["biodiversity_loss_pct"], self.biodiv_model.predict(X_test))), 3),
+        }
+        (IMPACT_MODEL_DIR / "fit_report.json").write_text(json.dumps(self.fit_report, indent=2))
+
         joblib.dump(self.mpis_model, MODEL_FILE)
         joblib.dump(self.biodiv_model, BIODIV_MODEL_FILE)
 
@@ -208,6 +248,7 @@ class MarineImpactScoringEngine:
             "debris_count": float(plastic_stats.get("debris_count", 0)),
             "fish_behavior_anomaly_index": float(fish_stats.get("behavioral_anomaly_index", 20.0)),
             "fish_count": float(fish_stats.get("fish_count", 0)),
+            "coral_present": float(coral_stats.get("coral_present", True)),
             "coral_bleaching_severity_index": float(coral_stats.get("bleaching_severity_index", 15.0)),
             "coral_cover_percentage": float(coral_stats.get("coral_cover_percentage", 35.0)),
             "water_quality_index": float(water_quality_stats.get("water_quality_index", 85.0)),

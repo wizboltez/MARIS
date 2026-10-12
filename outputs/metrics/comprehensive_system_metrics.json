@@ -7,47 +7,71 @@
     "plastic_false_alarm_transects": 5,
     "total_plastic_items_detected": 26,
     "mean_plastic_coverage_pct": 4.4,
-    "mean_fish_behavioral_anomaly_index": 20.4,
-    "mean_coral_bleaching_severity_index": 70.1,
-    "mean_water_quality_index": 73.76,
-    "mean_marine_pollution_impact_score": 26.04,
-    "mean_predicted_biodiversity_loss_pct": 31.38,
+    "mean_fish_behavioral_anomaly_index": 17.06,
+    "mean_coral_bleaching_severity_index": 0.0,
+    "mean_water_quality_index": 70.1,
+    "mean_marine_pollution_impact_score": 13.93,
+    "mean_predicted_biodiversity_loss_pct": 10.8,
     "transects_in_critical_or_high_risk": 0,
     "percentage_at_high_or_critical_risk": 0.0
   },
+  "fish_tracking": {
+    "videos": 53,
+    "tracks": 85,
+    "tracks_3plus_frames": 53,
+    "mobile_tracks_3plus_frames": 9,
+    "mobile_species": {
+      "eel": 4,
+      "fish": 3,
+      "crab": 2
+    },
+    "median_speed_mobile_px_per_frame": 10.28,
+    "median_speed_static_px_per_frame_noise_floor": 0.9,
+    "median_turn_mobile_deg": 16.56,
+    "mobile_tracks_near_plastic": 1,
+    "median_speed_near_plastic": 8.71,
+    "median_speed_away_from_plastic": 10.91
+  },
   "shap_mean_abs_contribution": {
-    "coral_bleaching_severity_index": 10.68,
-    "plastic_coverage_percentage": 4.27,
-    "fish_behavior_anomaly_index": 3.11,
-    "water_quality_index": 2.77,
-    "plastic_count": 1.57,
-    "temperature_c": 0.59,
-    "debris_count": 0.32,
-    "coral_cover_percentage": 0.31,
-    "dissolved_oxygen_mg_l": 0.2,
-    "turbidity_ntu": 0.19,
-    "salinity_psu": 0.11,
-    "ph": 0.09,
-    "fish_count": 0.08
+    "plastic_coverage_percentage": 4.96,
+    "fish_behavior_anomaly_index": 4.36,
+    "water_quality_index": 3.85,
+    "plastic_count": 2.48,
+    "coral_bleaching_severity_index": 1.66,
+    "temperature_c": 0.97,
+    "coral_cover_percentage": 0.87,
+    "coral_present": 0.54,
+    "turbidity_ntu": 0.28,
+    "debris_count": 0.21,
+    "fish_count": 0.19,
+    "salinity_psu": 0.15,
+    "ph": 0.11,
+    "dissolved_oxygen_mg_l": 0.08
+  },
+  "gradcam_heat_inside_plastic_boxes": {
+    "frames": 6,
+    "mean_share": 0.322
   },
   "ai_model_architectures": {
     "plastic_detector": "YOLOv11-seg (Instance Segmentation, Ultralytics)",
-    "fish_tracking": "IoU track matcher (ByteTrack-style); behaviour metrics simulated from single frames",
+    "fish_tracking": "ByteTrack (Ultralytics) on YOLO11-seg detections + phase-correlation camera-motion compensation",
     "coral_diagnostic": "Colour & texture heuristic (NOAA alert-level naming)",
     "water_telemetry": "Water Quality Index from preset station values",
     "impact_fusion": "XGBoost Regressor (160 estimators) trained on synthetic data",
     "biodiversity_loss": "XGBoost Regressor (140 estimators) trained on synthetic data",
-    "explainable_ai": "SHAP (TreeExplainer) + approximate detection saliency overlay"
+    "explainable_ai": "SHAP (TreeExplainer) + Grad-CAM on YOLO11-seg neck layers"
   },
   "data_provenance": {
     "plastic_detection": "REAL - YOLO11-seg trained on TrashCan 1.0, run on real test images",
     "plastic_detector_quality": "Weak - trash_plastic precision ~0.37, recall ~0.31 on leak-free images (see HANDOFF.md)",
-    "fish_behavior": "SIMULATED - fish boxes are real detections, but speed/turn values come from box size/position in a single image (no multi-frame tracking)",
-    "coral_health": "HEURISTIC - colour/texture rule, not a trained model; TrashCan images are deep-sea ROV footage, mostly without coral",
-    "water_quality": "SIMULATED - preset station values assigned to images in rotation, not measured for these images",
-    "impact_score_and_biodiversity_loss": "SYNTHETIC TRAINING DATA - XGBoost learned a hand-written formula from generated data",
+    "fish_behavior": "REAL, SMALL SAMPLE - ByteTrack over test video frames with camera-motion compensation; few mobile animals are tracked, so plastic-related behaviour change cannot be concluded",
+    "coral_health": "NOT ASSESSED for TrashCan (deep-sea ROV footage, no reef). For other photos: colour/texture heuristic with a coral-presence check; a trained SUIM coral model is pending",
+    "water_temperature_and_bleaching_alert": "REAL - NOAA Coral Reef Watch 5km daily satellite SST, Degree Heating Weeks and Bleaching Alert Area at each station",
+    "ph_oxygen_salinity_turbidity": "PRESET - station values (Copernicus Marine loader is implemented but needs a free account: `copernicusmarine login`)",
+    "station_assignment": "ASSUMED - TrashCan images have no geotags, so images are assigned to stations in rotation",
+    "impact_score_and_biodiversity_loss": "EXPERT FORMULA - XGBoost reproduces a documented hand-specified formula (synthetic training data); weights are assumptions, see src/modules/impact_scoring.py",
     "shap": "REAL - SHAP TreeExplainer on the XGBoost model (explains the model, which is trained on synthetic data)",
-    "saliency_heatmap": "APPROXIMATE - blurred detection boxes, not gradient-based Grad-CAM",
-    "geospatial_map": "SIMULATED - randomly generated stations around real reef regions"
+    "gradcam": "REAL - gradient-based Grad-CAM on the YOLO neck layers for the trash_plastic logit",
+    "geospatial_map": "REAL station positions + NOAA CRW values; per-station scores average the images assigned to each station"
   }
 }

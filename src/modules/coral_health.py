@@ -11,6 +11,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+# Coral-presence check. Pale sediment / marine snow in deep-sea footage matches the
+# "bleached" colour rule, so bleaching is only scored when pigmented, textured
+# coral-coloured regions are present. Thresholds chosen so that 0 of the 1,313
+# deep-sea TrashCan test frames pass; NOT yet validated on reef imagery.
+MIN_PIGMENTED_FRACTION = 0.10
+MIN_PIGMENTED_TEXTURE = 12.0
+HABITATS = ("auto", "reef", "non_reef")
+
+
 class CoralHealthAnalyzer:
     """Evaluates coral cover, bleaching severity, and algal overgrowth from underwater imagery."""
 
@@ -23,8 +32,13 @@ class CoralHealthAnalyzer:
         image_bgr: np.ndarray,
         temperature_c: float = 27.5,
         turbidity_ntu: float = 1.8,
+        habitat: str = "auto",
     ) -> dict:
-        """Analyzes an underwater image to determine coral coverage and bleaching severity."""
+        """Analyzes an underwater image to determine coral coverage and bleaching severity.
+
+        habitat: "non_reef" (known non-coral site, e.g. deep-sea TrashCan footage) skips
+        bleaching scoring; "reef" always scores it; "auto" uses the coral-presence check.
+        """
         h, w = image_bgr.shape[:2]
         total_pixels = h * w
 
@@ -68,7 +82,36 @@ class CoralHealthAnalyzer:
         total_coral_px = max(1, healthy_px + bleached_px + stressed_px)
         substrate_px = max(1, total_coral_px + algae_px)
 
-        coral_cover_pct = round(min(85.0, (total_coral_px / total_pixels) * 100.0 * 2.5), 1)
+        coral_cover_pct = round((total_coral_px / total_pixels) * 100.0, 1)
+
+        pigmented_fraction = healthy_px / total_pixels
+        pigmented_texture = (
+            float(np.abs(cv2.Laplacian(gray, cv2.CV_32F))[healthy_mask].mean()) if healthy_px else 0.0
+        )
+        if habitat == "non_reef":
+            coral_present = False
+        elif habitat == "reef":
+            coral_present = True
+        else:
+            coral_present = pigmented_fraction >= MIN_PIGMENTED_FRACTION and pigmented_texture >= MIN_PIGMENTED_TEXTURE
+
+        masks = {"healthy": healthy_mask, "stressed": stressed_mask, "bleached": bleached_mask, "algae": algae_mask}
+        if not coral_present:
+            empty = np.zeros_like(healthy_mask)
+            return {
+                "coral_present": False,
+                "coral_cover_percentage": 0.0,
+                "bleaching_severity_index": 0.0,
+                "healthy_coral_ratio_pct": 0.0,
+                "bleached_coral_ratio_pct": 0.0,
+                "algae_competition_ratio": 0.0,
+                "health_status": "No coral detected - bleaching not assessed",
+                "noaa_alert_level": "N/A",
+                "primary_condition": "Non-reef habitat" if habitat == "non_reef" else "No coral-like substrate found",
+                "pigmented_fraction": round(pigmented_fraction, 3),
+                "pigmented_texture": round(pigmented_texture, 1),
+                "masks": {k: empty for k in masks},
+            }
 
         # Bleaching Severity Index (BSI, 0-100)
         # Weighted by bleached area, stressed area, and thermal anomaly
@@ -102,14 +145,10 @@ class CoralHealthAnalyzer:
 
         algae_ratio = round((algae_px / max(1, total_coral_px)), 2)
 
-        masks = {
-            "healthy": healthy_mask,
-            "stressed": stressed_mask,
-            "bleached": bleached_mask,
-            "algae": algae_mask,
-        }
-
         return {
+            "coral_present": True,
+            "pigmented_fraction": round(pigmented_fraction, 3),
+            "pigmented_texture": round(pigmented_texture, 1),
             "coral_cover_percentage": coral_cover_pct,
             "bleaching_severity_index": round(bsi, 1),
             "healthy_coral_ratio_pct": round((healthy_px / total_coral_px) * 100.0, 1),
@@ -155,6 +194,12 @@ def draw_coral_health_overlay(image_bgr: np.ndarray, analysis: dict, alpha: floa
     cv2.rectangle(out, (bx1, by1), (bx2, by2), (25, 25, 25), -1)
     cv2.rectangle(out, (bx1, by1), (bx2, by2), badge_color, 2)
 
+    if not analysis.get("coral_present", True):
+        cv2.rectangle(out, (bx1, by1), (bx2, by2), (25, 25, 25), -1)
+        cv2.rectangle(out, (bx1, by1), (bx2, by2), (160, 160, 160), 2)
+        cv2.putText(out, "No coral detected", (bx1 + 10, by1 + 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
+        cv2.putText(out, "Bleaching not assessed", (bx1 + 10, by1 + 56), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1, cv2.LINE_AA)
+        return out
     cv2.putText(out, f"Coral BSI: {bsi:.1f}/100", (bx1 + 10, by1 + 22), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1, cv2.LINE_AA)
     cv2.putText(out, f"NOAA: {alert}", (bx1 + 10, by1 + 44), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 230, 255), 1, cv2.LINE_AA)
     cv2.putText(out, f"Cover: {analysis['coral_cover_percentage']:.1f}%", (bx1 + 10, by1 + 64), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (180, 255, 180), 1, cv2.LINE_AA)
@@ -165,6 +210,15 @@ def draw_coral_health_overlay(image_bgr: np.ndarray, analysis: dict, alpha: floa
 def plot_coral_health_summary(analysis: dict, save_path: str | None = None) -> plt.Figure:
     """Plots coral coverage distribution and NOAA bleaching metrics."""
     fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+    if not analysis.get("coral_present", True):
+        for ax in axes:
+            ax.axis("off")
+        message = f"No coral detected\n{analysis.get('primary_condition', '')}\nBleaching not assessed"
+        axes[0].text(0.5, 0.5, message, ha="center", va="center", fontsize=12)
+        fig.tight_layout()
+        if save_path:
+            fig.savefig(save_path, dpi=150)
+        return fig
 
     # Panel 1: Substrate composition
     categories = ["Healthy Coral", "Bleached Coral", "Stressed / Other"]

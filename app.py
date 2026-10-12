@@ -31,9 +31,20 @@ from src.modules.fish_behavior import (
     draw_fish_tracks_and_behavior,
     plot_fish_behavior_summary,
 )
+from src.modules.ocean_data import load_cache as load_ocean_cache
+from src.modules.ocean_data import station_conditions
+from src.modules.fish_tracking import (
+    compute_track_metrics,
+    draw_trajectories,
+    fish_stats_for_frame,
+    group_frames_by_video,
+    load_tracking_model,
+    track_video,
+)
+from src.modules.gradcam import PLASTIC_ID, YOLOGradCAM, overlay_cam
 from src.modules.geospatial_maps import (
     create_interactive_plastic_map,
-    generate_global_marine_stations,
+    build_station_table,
 )
 from src.modules.impact_scoring import (
     MarineImpactScoringEngine,
@@ -101,7 +112,34 @@ def load_models_and_engines():
     coral_analyzer = CoralHealthAnalyzer()
     impact_engine = MarineImpactScoringEngine()
     xai_explainer = MarineXAIExplainer(impact_engine.mpis_model, impact_engine.training_df)
-    return yolo_model, coral_analyzer, impact_engine, xai_explainer
+    gradcam = YOLOGradCAM(yolo_model) if yolo_model is not None else None
+    return yolo_model, coral_analyzer, impact_engine, xai_explainer, gradcam
+
+
+@st.cache_resource
+def get_tracking_model():
+    return load_tracking_model(BEST_MODEL_PATH)
+
+
+@st.cache_data
+def get_test_videos():
+    return group_frames_by_video(sorted((PROJECT_ROOT / "data" / "processed" / "test" / "images").glob("*.jpg")))
+
+
+@st.cache_data(show_spinner=False)
+def track_video_cached(video_id: str):
+    return compute_track_metrics(track_video(get_tracking_model(), get_test_videos()[video_id]))
+
+
+def rank_videos_for_tracking(videos: dict) -> list[str]:
+    """Videos with the most mobile-animal tracks first (from the batch pipeline output, if present)."""
+    tracks_csv = PREDICTIONS_DIR / "fish_tracks.csv"
+    if tracks_csv.exists():
+        t = pd.read_csv(tracks_csv, dtype={"video_id": str})
+        counts = t[t["mobile"] & (t["n_frames"] >= 2)]["video_id"].value_counts()
+        best = [v for v in counts.index if v in videos]
+        return best + [v for v in videos if v not in best]
+    return list(videos)
 
 
 @st.cache_data
@@ -111,12 +149,13 @@ def get_curated_images():
 
 
 SIMULATED_NOTE = (
-    "⚠️ Prototype: only plastic detection runs on real data. Water quality values are station presets, "
-    "fish behaviour is estimated from a single image, coral health is a colour heuristic, and the impact "
-    "score / biodiversity-loss models were trained on synthetic data."
+    "ℹ️ What is real: plastic detection (weak, recall ≈ 0.31), Grad-CAM, fish tracking on test videos, and NOAA "
+    "Coral Reef Watch sea temperature / bleaching alerts. Still assumed: pH, oxygen, salinity and turbidity (station "
+    "presets unless Copernicus is configured), the expert formula behind the impact score / biodiversity loss, "
+    "and the image-to-station assignment (TrashCan has no geotags)."
 )
 
-yolo_model, coral_analyzer, impact_engine, xai_explainer = load_models_and_engines()
+yolo_model, coral_analyzer, impact_engine, xai_explainer, gradcam = load_models_and_engines()
 
 if yolo_model is None:
     st.error(f"Trained model not found at {BEST_MODEL_PATH}. Please verify model weights.")
@@ -130,7 +169,7 @@ st.caption(
     "Coral Bleaching Assessment (NOAA Criteria) • Oceanographic Telemetry • "
     "Marine Pollution Impact Score (0-100) • Explainable AI (SHAP & Grad-CAM)"
 )
-st.warning(SIMULATED_NOTE)
+st.info(SIMULATED_NOTE)
 
 # Sidebar
 st.sidebar.image("https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=500&auto=format&fit=crop&q=80", caption="Autonomous Marine Survey Feed")
@@ -153,25 +192,35 @@ page = st.sidebar.radio(
 st.sidebar.subheader("🌡️ Oceanographic In-Situ Telemetry")
 station_preset = st.sidebar.selectbox("Select Marine Survey Station Preset", list(PRESET_STATIONS.keys()))
 preset_data = PRESET_STATIONS[station_preset]
+# Real NOAA CRW (and Copernicus, if configured) values merged over the preset
+station_data = {**preset_data, **station_conditions(station_preset, preset_data, load_ocean_cache())}
 
 use_custom_sensors = st.sidebar.checkbox("Override with Custom Sensor Telemetry", value=False)
 if use_custom_sensors:
-    temp = st.sidebar.slider("Water Temperature (°C)", 18.0, 33.0, float(preset_data["temperature_c"]), 0.1)
-    ph = st.sidebar.slider("Ocean pH (Acidity)", 7.4, 8.6, float(preset_data["ph"]), 0.02)
-    do = st.sidebar.slider("Dissolved Oxygen (mg/L)", 1.5, 9.5, float(preset_data["dissolved_oxygen_mg_l"]), 0.1)
-    sal = st.sidebar.slider("Salinity (PSU)", 28.0, 42.0, float(preset_data["salinity_psu"]), 0.2)
-    turb = st.sidebar.slider("Turbidity (NTU)", 0.1, 16.0, float(preset_data["turbidity_ntu"]), 0.2)
+    temp = st.sidebar.slider("Water Temperature (°C)", 18.0, 33.0, float(station_data["temperature_c"]), 0.1)
+    ph = st.sidebar.slider("Ocean pH (Acidity)", 7.4, 8.6, float(station_data["ph"]), 0.02)
+    do = st.sidebar.slider("Dissolved Oxygen (mg/L)", 1.5, 9.5, float(station_data["dissolved_oxygen_mg_l"]), 0.1)
+    sal = st.sidebar.slider("Salinity (PSU)", 28.0, 42.0, float(station_data["salinity_psu"]), 0.2)
+    turb = st.sidebar.slider("Turbidity (NTU)", 0.1, 16.0, float(station_data["turbidity_ntu"]), 0.2)
 else:
-    temp = preset_data["temperature_c"]
-    ph = preset_data["ph"]
-    do = preset_data["dissolved_oxygen_mg_l"]
-    sal = preset_data["salinity_psu"]
-    turb = preset_data["turbidity_ntu"]
+    temp = station_data["temperature_c"]
+    ph = station_data["ph"]
+    do = station_data["dissolved_oxygen_mg_l"]
+    sal = station_data["salinity_psu"]
+    turb = station_data["turbidity_ntu"]
 
 conf_threshold = st.sidebar.slider("YOLO Detection Confidence Threshold", 0.05, 0.85, 0.18, 0.02)
 
 # Compute WQI from active parameters
 wq_stats = calculate_water_quality_index(temp, ph, do, sal, turb)
+
+if use_custom_sensors:
+    water_source_note = "Water values: entered manually in the sidebar."
+else:
+    prov = station_data["provenance"]
+    water_source_note = "Water values: " + "; ".join(
+        f"{k.split('_')[0]} = {v}" for k, v in prov.items()
+    )
 
 # ==============================================================================
 # TAB 1: MULTI-MODAL DIAGNOSTIC STUDIO
@@ -213,6 +262,12 @@ if page == "🔬 Multi-Modal Diagnostic Studio":
         else:
             uploaded = st.file_uploader("Upload Underwater Image", type=["jpg", "jpeg", "png"])
             if uploaded is not None:
+                habitat_choice = st.radio(
+                    "Habitat of this photo",
+                    ["Auto-detect coral", "Coral reef", "Not a reef"],
+                    horizontal=True,
+                    help="Auto uses a colour/texture check for coral before scoring bleaching.",
+                )
                 file_bytes = np.frombuffer(uploaded.read(), np.uint8)
                 img_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
             else:
@@ -228,6 +283,9 @@ if page == "🔬 Multi-Modal Diagnostic Studio":
                 <p>Coordinates: {preset_data['latitude']:.2f}°, {preset_data['longitude']:.2f}°</p>
                 <p>Water Quality Index: <b>{wq_stats['water_quality_index']}/100</b></p>
                 <p>Status: <span style="color: {wq_stats['status_color']}; font-weight: bold;">{wq_stats['rating']}</span></p>
+                <p>NOAA Coral Reef Watch ({station_data['noaa_date'] or 'no data'}): <b>{station_data['noaa_bleaching_alert'] or 'n/a'}</b>,
+                DHW {station_data['noaa_dhw'] if station_data['noaa_dhw'] is not None else 'n/a'} °C-weeks</p>
+                <p style="font-size: 0.8em; opacity: 0.8;">{water_source_note}</p>
             </div>
             """,
             unsafe_allow_html=True,
@@ -254,10 +312,20 @@ if page == "🔬 Multi-Modal Diagnostic Studio":
                     fish_detections.append({"bbox": box.tolist(), "cls_name": cname.replace("animal_", ""), "conf": float(c_val)})
 
         # 2. Run Fish Behavior Analysis
-        fish_stats = analyze_fish_behavior(fish_detections, plastic_boxes, image_shape=(h, w))
+        fish_stats = None
+        if input_mode == "Curated Underwater Survey Transect":
+            video_id = chosen_name.split("_frame")[0].replace("vid_", "")
+            with st.spinner("Tracking fish across this video's frames..."):
+                fish_stats = fish_stats_for_frame(track_video_cached(video_id), Path(chosen_name).stem, plastic_boxes, (h, w))
+        if fish_stats is None:
+            fish_stats = analyze_fish_behavior(fish_detections, plastic_boxes, image_shape=(h, w))
 
         # 3. Run Coral Health Diagnostic
-        coral_stats = coral_analyzer.analyze_image(img_bgr, temperature_c=temp, turbidity_ntu=turb)
+        if input_mode == "Curated Underwater Survey Transect":
+            habitat = "non_reef"  # TrashCan frames are deep-sea ROV footage
+        else:
+            habitat = {"Auto-detect coral": "auto", "Coral reef": "reef", "Not a reef": "non_reef"}[habitat_choice]
+        coral_stats = coral_analyzer.analyze_image(img_bgr, temperature_c=temp, turbidity_ntu=turb, habitat=habitat)
 
         # 4. Multi-modal Impact Score & Biodiversity Loss Prediction
         impact_prediction = impact_engine.predict(plastic_stats, fish_stats, coral_stats, wq_stats)
@@ -274,8 +342,9 @@ if page == "🔬 Multi-Modal Diagnostic Studio":
         m5.metric("Coral Bleaching (BSI)", f"{coral_stats['bleaching_severity_index']:.1f}%", coral_stats["noaa_alert_level"])
         st.caption(
             "Plastic count/cover: real YOLO detections (plastic recall ≈ 0.31, so treat as a lower bound). "
-            "Impact score & biodiversity loss: XGBoost trained on synthetic data. "
-            "Fish index: single-image estimate. Coral BSI: colour heuristic (unreliable on images without coral)."
+            f"Fish index: {fish_stats.get('measurement', 'single image')}. "
+            "Coral: not assessed for TrashCan (deep-sea) frames. "
+            "Impact score & biodiversity loss: XGBoost reproducing a documented expert formula (synthetic training data)."
         )
 
         # Keep this diagnostic so the Fish / Coral / XAI pages can show it instead of example values
@@ -292,7 +361,7 @@ if page == "🔬 Multi-Modal Diagnostic Studio":
         # Visual Diagnostics Side-by-Side
         st.markdown("### 🔍 Computer Vision Multi-Modal Overlays")
         tab_v1, tab_v2, tab_v3, tab_v4 = st.tabs(
-            ["🗑️ Plastic Debris Segmentation", "🐟 Fish Tracking & Trajectories", "🪸 Coral Health & Bleaching", "🔥 Grad-CAM Saliency Heatmap"]
+            ["🗑️ Plastic Debris Segmentation", "🐟 Fish Tracking & Trajectories", "🪸 Coral Health & Bleaching", "🔥 Grad-CAM Heatmap"]
         )
 
         with tab_v1:
@@ -316,43 +385,55 @@ if page == "🔬 Multi-Modal Diagnostic Studio":
             st.image(cv2.cvtColor(annotated_coral, cv2.COLOR_BGR2RGB), use_container_width=True, caption="Coral Substrate & Bleaching Health Diagnostic (Green: Healthy, Yellow: Stressed, White: Bleached)")
 
         with tab_v4:
-            gradcam_img = xai_explainer.generate_gradcam_heatmap(img_bgr, plastic_boxes, coral_stats.get("masks"))
-            st.image(cv2.cvtColor(gradcam_img, cv2.COLOR_BGR2RGB), use_container_width=True, caption="Approximate saliency: blurred plastic detections + bleached-coral mask. Not gradient-based Grad-CAM.")
+            detected_ids = sorted({int(c) for c in yolo_res.boxes.cls.cpu().numpy()}) if yolo_res.boxes is not None else []
+            class_options = sorted(set(detected_ids) | {PLASTIC_ID})
+            target_id = st.selectbox(
+                "Explain the model's evidence for class",
+                class_options,
+                index=class_options.index(PLASTIC_ID),
+                format_func=lambda i: CLASS_NAMES[i] + ("" if i in detected_ids else " (not detected)"),
+            )
+            cam_res = gradcam.compute(img_bgr, class_id=target_id, conf=conf_threshold)
+            cam_img = overlay_cam(img_bgr, cam_res["cam"])
+            for box, cid in zip(yolo_res.boxes.xyxy.cpu().numpy(), yolo_res.boxes.cls.cpu().numpy()):
+                if int(cid) == target_id:
+                    cv2.rectangle(cam_img, tuple(box[:2].astype(int)), tuple(box[2:].astype(int)), (255, 255, 255), 2)
+            st.image(
+                cv2.cvtColor(cam_img, cv2.COLOR_BGR2RGB),
+                use_container_width=True,
+                caption=(
+                    f"Grad-CAM for '{cam_res['class_name']}' (gradients of the class logit w.r.t. YOLO neck layers "
+                    f"16/19/22). Max class score {cam_res['max_score']:.2f}; white boxes = detections of this class."
+                ),
+            )
 
 # ==============================================================================
 # TAB 2: GEOSPATIAL MAPS
 # ==============================================================================
 elif page == "🗺️ Geospatial Plastic Pollution Maps":
-    st.subheader("Global Geospatial Plastic Pollution & Biodiversity Impact Map")
+    st.subheader("Survey Station Map: Plastic Impact & NOAA Coral Reef Watch")
     st.caption(
-        "⚠️ Simulated stations: positions are randomly generated around real reef regions and the scores are "
-        "synthetic. No real survey, OBIS or NOAA data is loaded yet."
+        "Station positions and NOAA Coral Reef Watch values (sea temperature, Degree Heating Weeks, bleaching "
+        "alert) are real satellite data. Impact scores are the mean of the survey images assigned to each "
+        "station by the batch pipeline. TrashCan images have no geotags, so that assignment is by rotation."
     )
 
-    df_stations = generate_global_marine_stations(n_stations=85, random_seed=42)
+    assessment_csv = PREDICTIONS_DIR / "marine_biodiversity_assessment.csv"
+    df_assess = pd.read_csv(assessment_csv) if assessment_csv.exists() else pd.DataFrame()
+    df_stations = build_station_table(df_assess, PRESET_STATIONS, load_ocean_cache())
 
-    tier_filter = st.multiselect("Filter by Pollution Impact Tier", ["Low", "Moderate", "High", "Critical"], default=["Low", "Moderate", "High", "Critical"])
+    tier_filter = st.multiselect(
+        "Filter by Pollution Impact Tier",
+        ["Low", "Moderate", "High", "Critical", "No data"],
+        default=["Low", "Moderate", "High", "Critical", "No data"],
+    )
     filtered_df = df_stations[df_stations["impact_tier"].isin(tier_filter)]
 
     fig_map = create_interactive_plastic_map(filtered_df)
     st.plotly_chart(fig_map, use_container_width=True)
 
-    st.markdown("#### 📋 Marine Survey Station Records")
-    st.dataframe(
-        filtered_df[
-            [
-                "station_id",
-                "region",
-                "latitude",
-                "longitude",
-                "plastic_coverage_pct",
-                "marine_pollution_impact_score",
-                "impact_tier",
-                "biodiversity_loss_pct",
-            ]
-        ],
-        use_container_width=True,
-    )
+    st.markdown("#### 📋 Survey Station Records")
+    st.dataframe(filtered_df, use_container_width=True)
 
 # ==============================================================================
 # TAB 3: FISH BEHAVIOR LAB
@@ -360,40 +441,58 @@ elif page == "🗺️ Geospatial Plastic Pollution Maps":
 elif page == "🐟 Fish Behavior & Movement Tracking":
     st.subheader("Fish Detection, Tracking & Behavioral Change Analysis")
     st.caption(
-        "⚠️ Fish boxes are real YOLO detections. Speed and turn values are estimated from box size and position "
-        "in a single image. Real multi-frame tracking is not implemented yet."
+        "ByteTrack tracks the detector's animal detections across consecutive TrashCan video frames. ROV camera "
+        "motion is removed by phase correlation. Starfish and shells barely move, so their remaining apparent "
+        "speed shows the measurement noise floor."
     )
-    last = st.session_state.get("last_diagnostic")
 
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        st.markdown(
-            """
-            ### Methodology:
-            - **Detection**: fish and other animals detected by the YOLO model.
-            - **Association (planned)**: ByteTrack-style IoU matching across video frames.
-            - **Behavioral Indicators**:
-              - **Swimming Velocity**: Baseline foraging vs. rapid erratic bursts.
-              - **Turn Angle Irregularity**: High variance indicates disorientation or escape responses.
-              - **Plastic Proximity Hazard**: distance from each fish to the nearest detected plastic.
-            """
+    videos = get_test_videos()
+    ranked = rank_videos_for_tracking(videos)
+    vid = st.selectbox(
+        "Survey video",
+        ranked,
+        format_func=lambda v: f"vid_{v} ({len(videos[v])} frames)",
+    )
+    with st.spinner(f"Tracking {len(videos[vid])} frames..."):
+        tracks = track_video_cached(vid)
+
+    if tracks.empty:
+        st.info("No animals were tracked in this video.")
+    else:
+        mobile = tracks[tracks["mobile"] & (tracks["n_frames"] >= 2)]
+        static = tracks[~tracks["mobile"] & (tracks["n_frames"] >= 2)]
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Animal tracks", len(tracks))
+        c2.metric("Mobile tracks (fish/eel/crab, 2+ frames)", len(mobile))
+        c3.metric("Median mobile speed", f"{mobile['mean_speed_px'].median():.1f} px/frame" if mobile["mean_speed_px"].notna().any() else "n/a")
+        c4.metric("Noise floor (static animals)", f"{static['mean_speed_px'].median():.1f} px/frame" if static["mean_speed_px"].notna().any() else "n/a")
+
+        frame_idx = st.slider("Frame", 0, len(videos[vid]) - 1, int(tracks["last_frame"].max()))
+        frame = cv2.imread(str(videos[vid][frame_idx]))
+        res = yolo_model(frame, conf=conf_threshold, verbose=False)[0]
+        plastic = [b for b, c in zip(res.boxes.xyxy.cpu().numpy(), res.boxes.cls.cpu().numpy()) if int(c) == PLASTIC_ID]
+        upto = tracks[(tracks["first_frame"] <= frame_idx) & (tracks["n_frames"] >= 2)].copy()
+        # trim each path to the frames seen so far
+        for i, t in upto.iterrows():
+            keep = [k for k, img_id in enumerate(t["image_ids"]) if int(img_id.split("frame")[-1]) <= int(videos[vid][frame_idx].stem.split("frame")[-1])]
+            upto.at[i, "path_x"] = [t["path_x"][k] for k in keep]
+            upto.at[i, "path_y"] = [t["path_y"][k] for k in keep]
+        upto = upto[upto["path_x"].apply(len) > 0]
+        st.image(
+            cv2.cvtColor(draw_trajectories(frame, upto, plastic), cv2.COLOR_BGR2RGB),
+            caption="Track paths up to this frame (red boxes = plastic detected in this frame)",
+            use_container_width=True,
         )
-
-        if last is not None:
-            fish_viz = draw_fish_tracks_and_behavior(last["image_bgr"], last["fish_detections"], last["fish_stats"], last["plastic_boxes"])
-            st.image(cv2.cvtColor(fish_viz, cv2.COLOR_BGR2RGB), caption="Fish detections from the image in the Diagnostic Studio", use_container_width=True)
-        else:
-            fish_sample = (FIGURES_DIR / "fish_behavior_tracking.png")
-            if fish_sample.exists():
-                st.image(str(fish_sample), caption="Sample frame from the batch pipeline", use_container_width=True)
-
-    with col2:
-        if last is not None:
-            if last["fish_stats"]["fish_count"] == 0:
-                st.info("No fish were detected in the current Diagnostic Studio image. Pick a different frame there to see behaviour metrics.")
-            st.pyplot(plot_fish_behavior_summary(last["fish_stats"]))
-        else:
-            st.info("Run an image in the 🔬 Multi-Modal Diagnostic Studio first. Its fish results will show here.")
+        st.markdown("#### Track table")
+        st.dataframe(
+            tracks.drop(columns=["image_ids", "path_x", "path_y"]).round(2).sort_values("n_frames", ascending=False),
+            use_container_width=True,
+        )
+        st.caption(
+            "Speed = camera-compensated displacement per frame step. Turn = angle between successive moves "
+            "(only for moves > 2 px). min_plastic_dist_norm = closest approach to plastic as a fraction of "
+            "the image diagonal."
+        )
 
 # ==============================================================================
 # TAB 4: CORAL REEF HEALTH STUDIO
@@ -401,8 +500,10 @@ elif page == "🐟 Fish Behavior & Movement Tracking":
 elif page == "🪸 Coral Reef Health & Bleaching Diagnostic":
     st.subheader("Coral Reef Health Assessment & Bleaching Severity")
     st.caption(
-        "⚠️ Colour/texture heuristic with NOAA-style alert labels, not a trained coral model. TrashCan images are "
-        "deep-sea ROV footage that mostly contain no coral, so bleaching values on them are not meaningful."
+        "Colour/texture heuristic with NOAA-style alert labels (a trained SUIM coral model is pending). Bleaching is "
+        "only scored when a coral-presence check passes; TrashCan frames are deep-sea footage, so they show "
+        "'No coral detected'. Upload a reef photo in the Diagnostic Studio to try it. The station's real NOAA "
+        "satellite alert is shown in the Studio's station card."
     )
     last = st.session_state.get("last_diagnostic")
 

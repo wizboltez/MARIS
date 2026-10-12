@@ -2,7 +2,7 @@
 
 Implements:
 1. SHAP (SHapley Additive exPlanations) feature attribution for the impact model.
-2. Grad-CAM / Visual Saliency heatmap generator for underwater imagery.
+2. (Grad-CAM for the detector lives in src/modules/gradcam.py.)
 3. Domain-specific, explainable AI ecological recommendations for decision-makers.
 """
 from __future__ import annotations
@@ -54,48 +54,6 @@ class MarineXAIExplainer:
             "contributions": contributions,
             "shap_explanation": shap_values,
         }
-
-    def generate_gradcam_heatmap(
-        self,
-        image_bgr: np.ndarray,
-        plastic_boxes: list[np.ndarray] | None = None,
-        coral_masks: dict | None = None,
-    ) -> np.ndarray:
-        """Approximate saliency overlay highlighting detected plastic and bleached-coral regions.
-
-        NOTE: this is NOT gradient-based Grad-CAM -- it blurs the detection boxes and the
-        coral colour mask into a heatmap. It shows *where* detections are, not what the
-        network attended to.
-        """
-        h, w = image_bgr.shape[:2]
-        heatmap = np.zeros((h, w), dtype=np.float32)
-
-        # 1. Plastic debris heat activation centers
-        if plastic_boxes:
-            for box in plastic_boxes:
-                x1, y1, x2, y2 = [int(v) for v in box]
-                cx, cy = int((x1 + x2) / 2), int((y1 + y2) / 2)
-                bw, bh = max(10, x2 - x1), max(10, y2 - y1)
-                radius = int(max(bw, bh) * 0.8)
-                cv2.circle(heatmap, (cx, cy), radius, 1.0, -1)
-
-        # 2. Bleached coral activation
-        if coral_masks and "bleached" in coral_masks:
-            bleached = coral_masks["bleached"].astype(np.float32)
-            if bleached.any():
-                heatmap = np.maximum(heatmap, bleached * 0.75)
-
-        # Smooth and Gaussian blur to create smooth Grad-CAM aesthetic
-        heatmap = cv2.GaussianBlur(heatmap, (51, 51), 0)
-        if heatmap.max() > 0:
-            heatmap = heatmap / heatmap.max()
-
-        heatmap_uint8 = np.uint8(255 * heatmap)
-        color_cam = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
-
-        # Alpha blend with original underwater image
-        blended = cv2.addWeighted(image_bgr, 0.55, color_cam, 0.45, 0)
-        return blended
 
 
 def generate_explainable_recommendations(

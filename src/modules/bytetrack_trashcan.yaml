@@ -1,0 +1,10 @@
+# ByteTrack settings tuned for the TrashCan YOLO11-seg detector.
+# Fish detections from this model mostly score 0.1-0.4, so the Ultralytics defaults
+# (start a track only at >= 0.25) left most fish untracked.
+tracker_type: bytetrack
+track_high_thresh: 0.15 # first-stage association threshold
+track_low_thresh: 0.05 # second-stage (low-score) association threshold
+new_track_thresh: 0.15 # minimum score to start a new track
+track_buffer: 30 # frames to keep a lost track alive
+match_thresh: 0.85 # association cost threshold (frames are sampled sparsely, so allow lower IoU)
+fuse_score: True

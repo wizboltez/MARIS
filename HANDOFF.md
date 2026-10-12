@@ -41,10 +41,11 @@ parse it with `ast.literal_eval(row["class_wise_counts"])` if you need it progra
   predictions for new images (e.g. tied to your own biodiversity/coral/ocean data points),
   someone needs to run `python -m src.inference.predict --source <your images>` first — see
   `GUIDE.md` in the Teammate 1 folder, or just ask.
-- Detection isn't perfect: on the held-out test set, precision is ~0.83 (few false alarms) but
-  recall is ~0.60 (misses roughly 4 in 10 real plastic objects). If your risk model is
-  sensitive to undercounting, that's worth knowing — treat `plastic_count`/`plastic_area` as a
-  lower bound, not a ground truth.
+- Detection is weak for now. On images the current model never saw in training, the
+  `trash_plastic` class scores precision ~0.37 and recall ~0.31 (it misses roughly 7 in 10 real
+  plastic objects). An earlier figure of precision 0.83 / recall 0.60 was inflated by a
+  train/test overlap bug and should not be used. Treat `plastic_count`/`plastic_area` as a
+  rough lower bound, not ground truth. A retrained model is in progress.
 
 ## If you want to see how good the underlying model is
 

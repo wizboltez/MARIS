@@ -60,6 +60,7 @@ from src.modules.xai_engine import (
     generate_explainable_recommendations,
     plot_shap_summary_chart,
 )
+from src.utils.detector_metrics import load_plastic_metrics, plastic_summary
 from src.utils.quantify import quantify
 from src.utils.survey_sampling import has_plastic_label, select_survey_images
 from src.utils.visualization import draw_detections
@@ -466,6 +467,28 @@ def run_complete_assessment(sample_limit: int = 40):
         observational_section = "Not built yet: run `python -m src.modules.real_impact_data --refresh`."
         obs_status = "NOT BUILT"
 
+    eval_path = METRICS_DIR / "eval_metrics_test.json"
+    det_eval = json.loads(eval_path.read_text()) if eval_path.exists() else {}
+    if load_plastic_metrics() and det_eval.get("per_class"):
+        pc = {r["class"]: r for r in det_eval["per_class"]}
+        show = ["trash_plastic", "trash_metal", "trash_fishing_gear", "animal_fish", "animal_eel", "animal_crab", "rov"]
+        rows = "\n".join(
+            f"| `{c}` | {pc[c]['precision']:.3f} | {pc[c]['recall']:.3f} | {pc[c]['map50']:.3f} | {pc[c]['map50_95']:.3f} |"
+            for c in show if c in pc
+        )
+        detector_section = (
+            f"{det_eval.get('note', '')}. Held-out test split (videos never used for training or model selection):\n\n"
+            "| Class | Precision | Recall | mAP50 | mAP50-95 |\n|---|---|---|---|---|\n"
+            f"{rows}\n"
+            f"| **all 16 classes (box)** | {det_eval['box_precision']:.3f} | {det_eval['box_recall']:.3f} | "
+            f"{det_eval['box_map50']:.3f} | {det_eval['box_map50_95']:.3f} |\n\n"
+            "Plastic recall is the main limit (most plastic items are still missed), and fish recall is very low, "
+            "which limits how many fish can be tracked. Confusion matrix and PR/F1 curves: `outputs/figures/`; "
+            "training curves: `outputs/figures/training_curves_yolo11s_seg_v2.png`."
+        )
+    else:
+        detector_section = "Held-out detector metrics not available (or still the old leaky-split file)."
+
     fit_report = getattr(impact_engine, "fit_report", None) or (
         json.loads((PROJECT_ROOT / "models" / "impact_model" / "fit_report.json").read_text())
         if (PROJECT_ROOT / "models" / "impact_model" / "fit_report.json").exists() else {}
@@ -486,7 +509,7 @@ def run_complete_assessment(sample_limit: int = 40):
 
     data_provenance = {
         "plastic_detection": "REAL - YOLO11-seg trained on TrashCan 1.0, run on real test images",
-        "plastic_detector_quality": "Weak - trash_plastic precision ~0.37, recall ~0.31 on leak-free images (see HANDOFF.md)",
+        "plastic_detector_quality": f"Held-out test - {plastic_summary()}",
         "fish_behavior": "REAL, SMALL SAMPLE - ByteTrack over test video frames with camera-motion compensation; few mobile animals are tracked, so plastic-related behaviour change cannot be concluded",
         "coral_health": coral_status,
         "water_temperature_and_bleaching_alert": "REAL - NOAA Coral Reef Watch 5km daily satellite SST, Degree Heating Weeks and Bleaching Alert Area at each station",
@@ -516,6 +539,7 @@ def run_complete_assessment(sample_limit: int = 40):
             "transects_in_critical_or_high_risk": high_risk_count,
             "percentage_at_high_or_critical_risk": round((high_risk_count / total_transects) * 100.0, 1),
         },
+        "plastic_detector_test": det_eval,
         "fish_tracking": tracking_summary,
         "coral_segmenter_suim_test": coral_test,
         "coral_segmenter_deep_sea_domain_check": coral_domain,
@@ -564,7 +588,7 @@ def run_complete_assessment(sample_limit: int = 40):
 |---|---|---|
 | **Mean Marine Pollution Impact Score (MPIS)** | **{mean_mpis:.1f} / 100** | Tiers: Low < 25, Moderate < 50, High < 75, Critical ≥ 75 |
 | **Mean Predicted Biodiversity Loss** | **{mean_biodiv:.1f}%** | Model output (synthetic training data) |
-| **Plastic Items Detected** | **{plastic_detections_total}** items; found in {plastic_images_hit} of {gt_plastic_images} images with labelled plastic, plus {plastic_false_alarm_images} false-alarm images | Detector recall for plastic is ~0.31 |
+| **Plastic Items Detected** | **{plastic_detections_total}** items; found in {plastic_images_hit} of {gt_plastic_images} images with labelled plastic, plus {plastic_false_alarm_images} false-alarm images | {plastic_summary(short=True)} on unseen test videos |
 | **Coral bleaching** | Not assessed | TrashCan frames are deep-sea (no reef); see NOAA station alerts below |
 | **Mean Fish Behavioral Anomaly Index** | **{df_results['fish_behavior_anomaly_index'].mean():.1f} / 100** | {int((df_results['fish_measurement'] == 'multi-frame ByteTrack').sum())} of {total_transects} images have tracked moving animals |
 | **Transects at High / Critical Risk** | **{high_risk_count} of {total_transects} ({high_risk_count/total_transects*100:.1f}%)** | MPIS ≥ 50 |
@@ -581,6 +605,12 @@ def run_complete_assessment(sample_limit: int = 40):
 6. **Explainability**: SHAP TreeExplainer attributions for every transect, and Grad-CAM on the detector.
    On {len(gradcam_scores)} frames with plastic detections, on average {(np.mean(gradcam_scores) if gradcam_scores else 0) * 100:.0f}% of the
    Grad-CAM heat falls inside the plastic boxes (which cover only a few % of the image).
+
+---
+
+### Plastic detector: held-out test results
+
+{detector_section}
 
 ---
 

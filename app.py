@@ -60,6 +60,7 @@ from src.modules.xai_engine import (
     generate_explainable_recommendations,
     plot_shap_summary_chart,
 )
+from src.utils.detector_metrics import plastic_summary
 from src.utils.quantify import quantify
 from src.utils.survey_sampling import has_plastic_label, select_survey_images
 from src.utils.visualization import draw_detections
@@ -149,7 +150,7 @@ def get_curated_images():
 
 
 SIMULATED_NOTE = (
-    "ℹ️ What is real: plastic detection (weak, recall ≈ 0.31), Grad-CAM, fish tracking on test videos, and NOAA "
+    f"ℹ️ What is real: plastic detection ({plastic_summary(short=True)}), Grad-CAM, fish tracking on test videos, and NOAA "
     "Coral Reef Watch sea temperature / bleaching alerts. Still assumed: pH, oxygen, salinity and turbidity (station "
     "presets unless Copernicus is configured), the expert formula behind the impact score / biodiversity loss, "
     "and the image-to-station assignment (TrashCan has no geotags)."
@@ -341,7 +342,7 @@ if page == "🔬 Multi-Modal Diagnostic Studio":
         m4.metric("Fish Anomaly Index (BAI)", f"{fish_stats['behavioral_anomaly_index']:.1f}%", fish_stats["behavior_state"][:18])
         m5.metric("Coral Bleaching (BSI)", f"{coral_stats['bleaching_severity_index']:.1f}%", coral_stats["noaa_alert_level"])
         st.caption(
-            "Plastic count/cover: real YOLO detections (plastic recall ≈ 0.31, so treat as a lower bound). "
+            f"Plastic count/cover: real YOLO detections ({plastic_summary()}; treat counts as a lower bound). "
             f"Fish index: {fish_stats.get('measurement', 'single image')}. "
             "Coral: not assessed for TrashCan (deep-sea) frames. "
             "Impact score & biodiversity loss: XGBoost reproducing a documented expert formula (synthetic training data)."

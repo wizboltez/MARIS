@@ -15,11 +15,11 @@
 
 | Metric | Value | Reference |
 |---|---|---|
-| **Mean Marine Pollution Impact Score (MPIS)** | **13.9 / 100** | Tiers: Low < 25, Moderate < 50, High < 75, Critical ≥ 75 |
-| **Mean Predicted Biodiversity Loss** | **10.8%** | Model output (synthetic training data) |
-| **Plastic Items Detected** | **26** items; found in 16 of 20 images with labelled plastic, plus 5 false-alarm images | Detector recall for plastic is ~0.31 |
+| **Mean Marine Pollution Impact Score (MPIS)** | **13.2 / 100** | Tiers: Low < 25, Moderate < 50, High < 75, Critical ≥ 75 |
+| **Mean Predicted Biodiversity Loss** | **10.3%** | Model output (synthetic training data) |
+| **Plastic Items Detected** | **13** items; found in 9 of 20 images with labelled plastic, plus 3 false-alarm images | plastic recall 0.37 on unseen test videos |
 | **Coral bleaching** | Not assessed | TrashCan frames are deep-sea (no reef); see NOAA station alerts below |
-| **Mean Fish Behavioral Anomaly Index** | **17.1 / 100** | 1 of 40 images have tracked moving animals |
+| **Mean Fish Behavioral Anomaly Index** | **18.3 / 100** | 2 of 40 images have tracked moving animals |
 | **Transects at High / Critical Risk** | **0 of 40 (0.0%)** | MPIS ≥ 50 |
 
 ---
@@ -32,14 +32,33 @@
 4. **Water quality**: Water Quality Index from temperature (NOAA CRW satellite), pH, dissolved oxygen, salinity and turbidity.
 5. **Impact fusion**: XGBoost regressors predict the MPIS (0–100) and biodiversity loss % (expert-formula targets; held-out R² 0.945 for MPIS).
 6. **Explainability**: SHAP TreeExplainer attributions for every transect, and Grad-CAM on the detector.
-   On 6 frames with plastic detections, on average 32% of the
+   On 6 frames with plastic detections, on average 6% of the
    Grad-CAM heat falls inside the plastic boxes (which cover only a few % of the image).
+
+---
+
+### Plastic detector: held-out test results
+
+Phase 1: YOLO11-seg on TrashCan. Held-out test split (videos never used for training or model selection):
+
+| Class | Precision | Recall | mAP50 | mAP50-95 |
+|---|---|---|---|---|
+| `trash_plastic` | 0.611 | 0.374 | 0.489 | 0.340 |
+| `trash_metal` | 0.578 | 0.181 | 0.293 | 0.203 |
+| `trash_fishing_gear` | 0.470 | 0.167 | 0.194 | 0.102 |
+| `animal_fish` | 0.427 | 0.093 | 0.193 | 0.093 |
+| `animal_eel` | 0.553 | 0.420 | 0.451 | 0.284 |
+| `animal_crab` | 0.827 | 0.333 | 0.389 | 0.310 |
+| `rov` | 0.618 | 0.664 | 0.643 | 0.471 |
+| **all 16 classes (box)** | 0.507 | 0.210 | 0.252 | 0.165 |
+
+Plastic recall is the main limit (most plastic items are still missed), and fish recall is very low, which limits how many fish can be tracked. Confusion matrix and PR/F1 curves: `outputs/figures/`; training curves: `outputs/figures/training_curves_yolo11s_seg_v2.png`.
 
 ---
 
 ## 3. Fish Tracking
 
-53 test videos tracked; 85 animal tracks, 9 mobile (fish/eel/crab) tracks of 3+ frames ({'eel': 4, 'fish': 3, 'crab': 2}). Median mobile speed 10.28 px/frame vs. 0.9 px/frame for near-static animals (measurement noise floor). Mobile tracks passing within 25% of the image diagonal of plastic: 1 - too few to test whether plastic changes behaviour.
+53 test videos tracked; 34 animal tracks, 8 mobile (fish/eel/crab) tracks of 3+ frames ({'eel': 5, 'fish': 2, 'crab': 1}). Median mobile speed 12.31 px/frame vs. 1.75 px/frame for near-static animals (measurement noise floor). Mobile tracks passing within 25% of the image diagonal of plastic: 3 - too few to test whether plastic changes behaviour.
 
 ## 4. Coral Reef Segmentation Model
 
@@ -72,11 +91,11 @@ Adding microplastics changes held-out R² by **+0.001**. Feature importance (mea
 
 | Station | SST (°C) | DHW (°C-weeks) | Bleaching alert | Images assigned | Mean MPIS |
 |---|---|---|---|---|---|
-| Raja Ampat, Coral Triangle | 29.05 | 0.0 | Bleaching Watch | 8 | 9.2 |
-| Cairns Sector, Great Barrier Reef | 25.21 | 0.0 | No Stress | 8 | 7.3 |
-| Red Sea Central Channel | 31.79 | 1.19 | Bleaching Watch | 8 | 17.4 |
-| Manila Bay Outflow | 30.28 | 4.79 | Alert Level 1 | 8 | 19.3 |
-| Gulf Coastal Estuary | 28.49 | 7.46 | Bleaching Watch | 8 | 16.5 |
+| Raja Ampat, Coral Triangle | 29.05 | 0.0 | Bleaching Watch | 8 | 7.6 |
+| Cairns Sector, Great Barrier Reef | 25.21 | 0.0 | No Stress | 8 | 7.0 |
+| Red Sea Central Channel | 31.79 | 1.19 | Bleaching Watch | 8 | 17.0 |
+| Manila Bay Outflow | 30.28 | 4.79 | Alert Level 1 | 8 | 18.1 |
+| Gulf Coastal Estuary | 28.49 | 7.46 | Bleaching Watch | 8 | 16.0 |
 
 ---
 
@@ -88,14 +107,14 @@ average (e.g. most images have little or no plastic).
 
 | Feature | Mean abs. SHAP (score points) | Mean SHAP | Direction |
 |---|---|---|---|
-| `plastic_coverage_percentage` | 4.96 | -3.73 | lowers score on average |
-| `fish_behavior_anomaly_index` | 4.36 | -4.36 | lowers score on average |
-| `water_quality_index` | 3.85 | +2.07 | raises score on average |
-| `plastic_count` | 2.48 | -2.48 | lowers score on average |
+| `plastic_coverage_percentage` | 5.39 | -4.23 | lowers score on average |
+| `fish_behavior_anomaly_index` | 4.24 | -4.24 | lowers score on average |
+| `water_quality_index` | 3.81 | +2.03 | raises score on average |
+| `plastic_count` | 2.81 | -2.81 | lowers score on average |
 | `coral_bleaching_severity_index` | 1.66 | -1.66 | lowers score on average |
-| `temperature_c` | 0.97 | +0.65 | raises score on average |
-| `coral_cover_percentage` | 0.87 | +0.87 | raises score on average |
-| `coral_present` | 0.54 | +0.54 | raises score on average |
+| `temperature_c` | 0.95 | +0.64 | raises score on average |
+| `coral_cover_percentage` | 0.89 | +0.89 | raises score on average |
+| `coral_present` | 0.49 | +0.49 | raises score on average |
 
 ---
 
@@ -104,7 +123,7 @@ average (e.g. most images have little or no plastic).
 | Component | Status |
 |---|---|
 | Plastic Detection | REAL - YOLO11-seg trained on TrashCan 1.0, run on real test images |
-| Plastic Detector Quality | Weak - trash_plastic precision ~0.37, recall ~0.31 on leak-free images (see HANDOFF.md) |
+| Plastic Detector Quality | Held-out test - trash_plastic test precision 0.61, recall 0.37, mAP50 0.49 (unseen videos) |
 | Fish Behavior | REAL, SMALL SAMPLE - ByteTrack over test video frames with camera-motion compensation; few mobile animals are tracked, so plastic-related behaviour change cannot be concluded |
 | Coral Health | TRAINED - U-Net (resnet34) on SUIM; official SUIM TEST reef IoU 0.684 (precision 0.76, recall 0.87). Not applied to TrashCan (deep-sea, no reef; the U-Net is out of domain there). Bleaching itself is still a colour rule inside the reef mask (SUIM has no bleaching labels). |
 | Water Temperature And Bleaching Alert | REAL - NOAA Coral Reef Watch 5km daily satellite SST, Degree Heating Weeks and Bleaching Alert Area at each station |

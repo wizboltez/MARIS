@@ -1,21 +1,126 @@
 {
-  "WARNING": "The overall numbers below were measured with a train/test overlap (same source videos in both) and are inflated. Do not report them. See HANDOFF.md.",
-  "trash_plastic_leak_free": {
-    "precision": 0.37,
-    "recall": 0.31,
-    "source": "HANDOFF.md (images the model never saw in training)"
-  },
-  "inflated_metrics_do_not_use": {
-    "split": "test",
-    "box_precision": 0.8342481313132214,
-    "box_recall": 0.5997114083924318,
-    "box_map50": 0.6804854203871643,
-    "box_map50_95": 0.4769072808171928,
-    "box_f1": 0.6977994956277551,
-    "mask_precision": 0.8406561292031687,
-    "mask_recall": 0.5996565683942592,
-    "mask_map50": 0.6767640978284131,
-    "mask_map50_95": 0.41390957831719233,
-    "mask_f1": 0.6999937867359858
-  }
+  "run": "yolo11s_seg_v2_test",
+  "weights": "/content/drive/MyDrive/trashcan/runs/yolo11s_seg_v2/weights/best.pt",
+  "split": "test",
+  "note": "Phase 1: YOLO11-seg on TrashCan",
+  "leak_free": true,
+  "box_precision": 0.5074394563170167,
+  "box_recall": 0.2104121644279657,
+  "box_map50": 0.251983753972828,
+  "box_map50_95": 0.16518644842029717,
+  "mask_precision": 0.35011179454678376,
+  "mask_recall": 0.23504457854560182,
+  "mask_map50": 0.2391559911047668,
+  "mask_map50_95": 0.1354046763582066,
+  "plastic_precision": 0.6110563733192976,
+  "plastic_recall": 0.37391413986369826,
+  "plastic_map50": 0.48865109738731555,
+  "plastic_map50_95": 0.34044247224480506,
+  "per_class": [
+    {
+      "class": "rov",
+      "precision": 0.618,
+      "recall": 0.664,
+      "map50": 0.643,
+      "map50_95": 0.471
+    },
+    {
+      "class": "plant",
+      "precision": 0.028,
+      "recall": 0.019,
+      "map50": 0.018,
+      "map50_95": 0.012
+    },
+    {
+      "class": "animal_fish",
+      "precision": 0.427,
+      "recall": 0.093,
+      "map50": 0.193,
+      "map50_95": 0.093
+    },
+    {
+      "class": "animal_starfish",
+      "precision": 0.777,
+      "recall": 0.506,
+      "map50": 0.517,
+      "map50_95": 0.196
+    },
+    {
+      "class": "animal_shells",
+      "precision": 1.0,
+      "recall": 0.0,
+      "map50": 0.0,
+      "map50_95": 0.0
+    },
+    {
+      "class": "animal_crab",
+      "precision": 0.827,
+      "recall": 0.333,
+      "map50": 0.389,
+      "map50_95": 0.31
+    },
+    {
+      "class": "animal_eel",
+      "precision": 0.553,
+      "recall": 0.42,
+      "map50": 0.451,
+      "map50_95": 0.284
+    },
+    {
+      "class": "animal_etc",
+      "precision": 0.0,
+      "recall": 0.0,
+      "map50": 0.001,
+      "map50_95": 0.0
+    },
+    {
+      "class": "trash_etc",
+      "precision": 0.251,
+      "recall": 0.233,
+      "map50": 0.144,
+      "map50_95": 0.087
+    },
+    {
+      "class": "trash_fabric",
+      "precision": 0.0,
+      "recall": 0.0,
+      "map50": 0.034,
+      "map50_95": 0.022
+    },
+    {
+      "class": "trash_fishing_gear",
+      "precision": 0.47,
+      "recall": 0.167,
+      "map50": 0.194,
+      "map50_95": 0.102
+    },
+    {
+      "class": "trash_metal",
+      "precision": 0.578,
+      "recall": 0.181,
+      "map50": 0.293,
+      "map50_95": 0.203
+    },
+    {
+      "class": "trash_paper",
+      "precision": 0.471,
+      "recall": 0.167,
+      "map50": 0.414,
+      "map50_95": 0.358
+    },
+    {
+      "class": "trash_plastic",
+      "precision": 0.611,
+      "recall": 0.374,
+      "map50": 0.489,
+      "map50_95": 0.34
+    },
+    {
+      "class": "trash_rubber",
+      "precision": 1.0,
+      "recall": 0.0,
+      "map50": 0.0,
+      "map50_95": 0.0
+    }
+  ]
 }

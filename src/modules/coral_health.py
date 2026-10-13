@@ -23,9 +23,13 @@ HABITATS = ("auto", "reef", "non_reef")
 class CoralHealthAnalyzer:
     """Evaluates coral cover, bleaching severity, and algal overgrowth from underwater imagery."""
 
-    def __init__(self):
-        # Colorimetric reference ranges in HSV and LAB space
-        pass
+    def __init__(self, use_segmenter: bool = True):
+        # SUIM U-Net reef segmenter if trained + passed its quality gate, else None (colour heuristic only)
+        self.segmenter = None
+        if use_segmenter:
+            from src.modules.coral_segmentation import load_reef_segmenter
+
+            self.segmenter = load_reef_segmenter()
 
     def analyze_image(
         self,
@@ -74,6 +78,16 @@ class CoralHealthAnalyzer:
         # Stressed / pale coral (intermediate L, moderate S)
         stressed_mask = (l_channel >= 135) & (l_channel <= 155) & (s_channel < 95) & (depth_weight > 0.2) & (~healthy_mask) & (~algae_mask)
 
+        # With the SUIM U-Net, colour classes are only counted inside the predicted reef area
+        reef_fraction = None
+        if self.segmenter is not None and habitat != "non_reef":
+            reef = self.segmenter.predict(image_bgr)["reef_mask"]
+            reef_fraction = float(reef.mean())
+            bleached_mask &= reef
+            stressed_mask &= reef
+            algae_mask &= reef
+            healthy_mask = reef & ~bleached_mask & ~stressed_mask & ~algae_mask  # pigmented reef
+
         bleached_px = int(bleached_mask.sum())
         healthy_px = int(healthy_mask.sum())
         algae_px = int(algae_mask.sum())
@@ -88,12 +102,19 @@ class CoralHealthAnalyzer:
         pigmented_texture = (
             float(np.abs(cv2.Laplacian(gray, cv2.CV_32F))[healthy_mask].mean()) if healthy_px else 0.0
         )
+        if reef_fraction is not None:
+            coral_cover_pct = round(reef_fraction * 100.0, 1)
         if habitat == "non_reef":
             coral_present = False
         elif habitat == "reef":
             coral_present = True
+        elif reef_fraction is not None:
+            from src.modules.coral_segmentation import MIN_REEF_FRACTION
+
+            coral_present = reef_fraction >= MIN_REEF_FRACTION
         else:
             coral_present = pigmented_fraction >= MIN_PIGMENTED_FRACTION and pigmented_texture >= MIN_PIGMENTED_TEXTURE
+        method = "SUIM U-Net reef mask + colour" if reef_fraction is not None else "colour/texture heuristic"
 
         masks = {"healthy": healthy_mask, "stressed": stressed_mask, "bleached": bleached_mask, "algae": algae_mask}
         if not coral_present:
@@ -110,6 +131,7 @@ class CoralHealthAnalyzer:
                 "primary_condition": "Non-reef habitat" if habitat == "non_reef" else "No coral-like substrate found",
                 "pigmented_fraction": round(pigmented_fraction, 3),
                 "pigmented_texture": round(pigmented_texture, 1),
+                "method": method,
                 "masks": {k: empty for k in masks},
             }
 
@@ -147,6 +169,7 @@ class CoralHealthAnalyzer:
 
         return {
             "coral_present": True,
+            "method": method,
             "pigmented_fraction": round(pigmented_fraction, 3),
             "pigmented_texture": round(pigmented_texture, 1),
             "coral_cover_percentage": coral_cover_pct,

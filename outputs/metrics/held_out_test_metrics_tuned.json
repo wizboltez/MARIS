@@ -1,0 +1,104 @@
+{
+  "rov": {
+    "threshold": 0.5900000000000001,
+    "test_p": 0.7136363636363636,
+    "test_r": 0.5667870036101083,
+    "test_f1": 0.6317907444668008
+  },
+  "plant": {
+    "threshold": 0.02,
+    "test_p": 0.015625,
+    "test_r": 0.038461538461538464,
+    "test_f1": 0.022222222222222223
+  },
+  "animal_fish": {
+    "threshold": 0.16999999999999998,
+    "test_p": 0.373134328358209,
+    "test_r": 0.16556291390728478,
+    "test_f1": 0.22935779816513763
+  },
+  "animal_starfish": {
+    "threshold": 0.25,
+    "test_p": 0.5384615384615384,
+    "test_r": 0.5185185185185185,
+    "test_f1": 0.5283018867924528
+  },
+  "animal_shells": {
+    "threshold": 0.25,
+    "test_p": 0.0,
+    "test_r": 0.0,
+    "test_f1": 0.0
+  },
+  "animal_crab": {
+    "threshold": 0.27,
+    "test_p": 0.7142857142857143,
+    "test_r": 0.3333333333333333,
+    "test_f1": 0.4545454545454545
+  },
+  "animal_eel": {
+    "threshold": 0.4,
+    "test_p": 0.589041095890411,
+    "test_r": 0.43,
+    "test_f1": 0.49710982658959535
+  },
+  "animal_etc": {
+    "threshold": 0.25,
+    "test_p": 0.0,
+    "test_r": 0.0,
+    "test_f1": 0.0
+  },
+  "trash_etc": {
+    "threshold": 0.15,
+    "test_p": 0.19592476489028213,
+    "test_r": 0.3125,
+    "test_f1": 0.24084778420038536
+  },
+  "trash_fabric": {
+    "threshold": 0.34,
+    "test_p": 0.0,
+    "test_r": 0.0,
+    "test_f1": 0.0
+  },
+  "trash_fishing_gear": {
+    "threshold": 0.25,
+    "test_p": 0.3,
+    "test_r": 0.16666666666666666,
+    "test_f1": 0.21428571428571427
+  },
+  "trash_metal": {
+    "threshold": 0.08,
+    "test_p": 0.20958083832335328,
+    "test_r": 0.21084337349397592,
+    "test_f1": 0.21021021021021022
+  },
+  "trash_paper": {
+    "threshold": 0.25,
+    "test_p": 0.5833333333333334,
+    "test_r": 0.19444444444444445,
+    "test_f1": 0.2916666666666667
+  },
+  "trash_plastic": {
+    "threshold": 0.47000000000000003,
+    "test_p": 0.6145454545454545,
+    "test_r": 0.338,
+    "test_f1": 0.4361290322580645
+  },
+  "trash_rubber": {
+    "threshold": 0.25,
+    "test_p": 1.0,
+    "test_r": 0.0,
+    "test_f1": 0.0
+  },
+  "trash_wood": {
+    "threshold": 0.09000000000000001,
+    "test_p": 0.0,
+    "test_r": 0.0,
+    "test_f1": 0.0
+  },
+  "trash_plastic_at_018_baseline": {
+    "threshold": 0.18,
+    "test_p": 0.47478991596638653,
+    "test_r": 0.452,
+    "test_f1": 0.4631147540983606
+  }
+}

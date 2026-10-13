@@ -72,9 +72,10 @@ def load_ground_truths_with_sizes(split_dir: Path) -> dict[str, dict]:
     return data
 
 
-def run_split_inference(model: YOLO, split_dir: Path, conf_floor: float = 0.02) -> dict[str, list[dict]]:
+def run_split_inference(model: YOLO, split_dir: Path, conf_floor: float = 0.02, device=None) -> dict[str, list[dict]]:
     """Collect predictions per image using streaming inference to fit within 4GB VRAM."""
-    device = 0 if torch.cuda.is_available() else "cpu"
+    if device is None:
+        device = 0 if torch.cuda.is_available() else "cpu"
     img_dir = split_dir / "images"
     results = model.predict(source=str(img_dir), conf=conf_floor, imgsz=640, device=device, stream=True, verbose=False)
 

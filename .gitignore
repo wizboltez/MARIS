@@ -32,3 +32,6 @@ Thumbs.db
 # Large trained weights (~98 MB): kept on Google Drive (MyDrive/suim/suim_unet.pt);
 # the small config + test-metrics JSONs next to it ARE committed.
 models/coral_segmenter/*.pt
+
+# Fish-only training set built from FathomNet + TrashCan (regenerable)
+data/processed_fish/

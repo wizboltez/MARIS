@@ -440,6 +440,32 @@ def run_complete_assessment(sample_limit: int = 40):
         coral_status = "NOT ASSESSED for TrashCan (deep-sea ROV footage, no reef). For other photos: colour/texture heuristic with a coral-presence check"
         coral_section = "No trained coral model found in models/coral_segmenter/; the colour/texture heuristic is used."
 
+    obs_path = PROJECT_ROOT / "models" / "impact_model" / "observational" / "metrics.json"
+    obs = json.loads(obs_path.read_text()) if obs_path.exists() else None
+    if obs:
+        shap_rank = sorted(obs["mean_abs_shap"].items(), key=lambda kv: -kv[1])
+        direction = obs["microplastics_shap_direction_corr"]
+        observational_section = (
+            f"Built only from real public data: {obs['n_microplastic_samples']} NOAA NCEI ocean-surface microplastic samples "
+            f"aggregated into {obs['n_cells']} two-degree ocean cells, OBIS species counts for each cell, and NOAA Coral Reef "
+            "Watch sea temperature and heat stress. XGBoost predicts log10 recorded species richness, with OBIS sampling "
+            f"effort and latitude as controls, evaluated by {obs['cv']}.\n\n"
+            "| Model | Held-out R² |\n|---|---|\n"
+            f"| Sampling effort only | {obs['r2_sampling_effort_only']} |\n"
+            f"| All features except microplastics | {obs['r2_without_microplastics']} |\n"
+            f"| All features incl. microplastics | **{obs['r2_all_features']}** |\n\n"
+            f"Adding microplastics changes held-out R² by **{obs['microplastics_r2_gain']:+.3f}**. "
+            f"Feature importance (mean |SHAP|): " + ", ".join(f"`{k}` {v:.3f}" for k, v in shap_rank) + ". "
+            f"Correlation between microplastic level and its SHAP contribution: {direction:+.2f} "
+            "(negative = more plastic associated with fewer recorded species). "
+            "This is an association across ocean regions, not proof that plastic causes species loss."
+        )
+        obs_status = (f"REAL DATA, ASSOCIATION ONLY - NCEI + OBIS + NOAA CRW, {obs['n_cells']} cells, spatial-CV R² "
+                      f"{obs['r2_all_features']} (microplastics gain {obs['microplastics_r2_gain']:+.3f})")
+    else:
+        observational_section = "Not built yet: run `python -m src.modules.real_impact_data --refresh`."
+        obs_status = "NOT BUILT"
+
     fit_report = getattr(impact_engine, "fit_report", None) or (
         json.loads((PROJECT_ROOT / "models" / "impact_model" / "fit_report.json").read_text())
         if (PROJECT_ROOT / "models" / "impact_model" / "fit_report.json").exists() else {}
@@ -466,6 +492,7 @@ def run_complete_assessment(sample_limit: int = 40):
         "water_temperature_and_bleaching_alert": "REAL - NOAA Coral Reef Watch 5km daily satellite SST, Degree Heating Weeks and Bleaching Alert Area at each station",
         "ph_oxygen_salinity_turbidity": copernicus_status,
         "station_assignment": "ASSUMED - TrashCan images have no geotags, so images are assigned to stations in rotation",
+        "observational_plastic_biodiversity_model": obs_status,
         "impact_score_and_biodiversity_loss": "EXPERT FORMULA - XGBoost reproduces a documented hand-specified formula (synthetic training data); weights are assumptions, see src/modules/impact_scoring.py",
         "shap": "REAL - SHAP TreeExplainer on the XGBoost model (explains the model, which is trained on synthetic data)",
         "gradcam": "REAL - gradient-based Grad-CAM on the YOLO neck layers for the trash_plastic logit",
@@ -492,6 +519,7 @@ def run_complete_assessment(sample_limit: int = 40):
         "fish_tracking": tracking_summary,
         "coral_segmenter_suim_test": coral_test,
         "coral_segmenter_deep_sea_domain_check": coral_domain,
+        "observational_plastic_biodiversity_model": obs,
         "shap_mean_abs_contribution": shap_summary["mean_abs_shap"].to_dict(),
         "gradcam_heat_inside_plastic_boxes": {
             "frames": len(gradcam_scores),
@@ -564,7 +592,13 @@ def run_complete_assessment(sample_limit: int = 40):
 
 {coral_section}
 
-## 5. Survey Stations (NOAA Coral Reef Watch, real satellite data)
+## 5. Real-World Evidence: Microplastics vs. Recorded Biodiversity
+
+{observational_section}
+
+![Observational model](../figures/real_world_plastic_biodiversity.png)
+
+## 6. Survey Stations (NOAA Coral Reef Watch, real satellite data)
 
 | Station | SST (°C) | DHW (°C-weeks) | Bleaching alert | Images assigned | Mean MPIS |
 |---|---|---|---|---|---|
@@ -572,7 +606,7 @@ def run_complete_assessment(sample_limit: int = 40):
 
 ---
 
-## 6. SHAP Attribution Summary (computed over all {total_transects} transects)
+## 7. SHAP Attribution Summary (computed over all {total_transects} transects)
 
 Most influential feature on average: **`{top_feature}`**. SHAP values are relative to the model's
 average synthetic site, so a feature "lowers" the score when these images have less of it than that
@@ -584,7 +618,7 @@ average (e.g. most images have little or no plastic).
 
 ---
 
-## 7. Data Provenance
+## 8. Data Provenance
 
 | Component | Status |
 |---|---|
@@ -592,7 +626,7 @@ average (e.g. most images have little or no plastic).
 
 ---
 
-## 8. Standard Decision-Support Recommendations
+## 9. Standard Decision-Support Recommendations
 
 Rule-based guidance templates, triggered by score thresholds:
 

@@ -435,6 +435,38 @@ elif page == "🗺️ Geospatial Plastic Pollution Maps":
     st.markdown("#### 📋 Survey Station Records")
     st.dataframe(filtered_df, width="stretch")
 
+    st.markdown("---")
+    st.markdown("#### 🌍 Real-world evidence: ocean microplastics vs. recorded species")
+    obs_metrics = PROJECT_ROOT / "models" / "impact_model" / "observational" / "metrics.json"
+    obs_cells = PROJECT_ROOT / "data" / "external" / "real_impact_cells.csv"
+    if obs_metrics.exists() and obs_cells.exists():
+        om = json.loads(obs_metrics.read_text())
+        cells = pd.read_csv(obs_cells).dropna(subset=["log10_species"])
+        st.caption(
+            f"Real public data only: {om['n_microplastic_samples']} NOAA NCEI ocean-surface microplastic samples in "
+            f"{om['n_cells']} two-degree cells, OBIS species counts, NOAA Coral Reef Watch temperature. "
+            "Shows association across regions, not causation; OBIS counts depend on survey effort (controlled for)."
+        )
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Held-out R² (spatial CV)", om["r2_all_features"])
+        c2.metric("R² without microplastics", om["r2_without_microplastics"])
+        c3.metric("Gain from microplastics", f"{om['microplastics_r2_gain']:+.3f}")
+        import plotly.express as px
+        fig_obs = px.scatter_geo(
+            cells, lat="lat_center", lon="lon_center", color="log10_microplastics",
+            size=cells["obis_species"].clip(lower=1) ** 0.5, color_continuous_scale="Viridis",
+            hover_data={"microplastics_median_m3": ":.3f", "obis_species": True, "obis_records": True,
+                        "n_samples": True, "lat_center": False, "lon_center": False},
+            labels={"log10_microplastics": "log10 pieces/m³"}, projection="natural earth",
+            title="Microplastic concentration (colour) and recorded species (size) per 2° cell",
+        )
+        fig_obs.update_layout(height=480, margin=dict(l=10, r=10, t=50, b=10))
+        st.plotly_chart(fig_obs, width="stretch")
+        shap_df = pd.DataFrame(sorted(om["mean_abs_shap"].items(), key=lambda kv: kv[1]), columns=["feature", "mean |SHAP|"])
+        st.bar_chart(shap_df.set_index("feature"), horizontal=True)
+    else:
+        st.info("Run `python -m src.modules.real_impact_data --refresh` to build the real-data model.")
+
 # ==============================================================================
 # TAB 3: FISH BEHAVIOR LAB
 # ==============================================================================

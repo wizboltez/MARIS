@@ -68,6 +68,32 @@
     "frames_coral_declared_auto_mode_unet_AND_colour_check": 0,
     "conclusion": "U-Net is out of domain on deep-sea ROV footage (marks mud/sediment/rock as reef); auto mode therefore requires U-Net AND colour/texture check."
   },
+  "observational_plastic_biodiversity_model": {
+    "what": "Observational model: log10 OBIS species richness per 2-degree cell from NCEI microplastics, OBIS sampling effort, latitude, NOAA CRW SST and DHW",
+    "n_cells": 698,
+    "n_microplastic_samples": 13460,
+    "cv": "5-fold spatial block CV (10-degree blocks)",
+    "r2_all_features": 0.848,
+    "mae_log10_species": 0.249,
+    "r2_without_microplastics": 0.847,
+    "r2_sampling_effort_only": 0.822,
+    "microplastics_r2_gain": 0.001,
+    "mean_abs_shap": {
+      "log10_microplastics": 0.027300000190734863,
+      "log10_obis_records": 0.6262999773025513,
+      "abs_latitude": 0.05609999969601631,
+      "sst_mean_c": 0.05900000035762787,
+      "dhw_max": 0.0551999993622303
+    },
+    "microplastics_shap_direction_corr": -0.145,
+    "interpretation_note": "Association only (not causation). Negative direction = higher microplastic concentration associated with fewer recorded species after controls.",
+    "sources": {
+      "microplastics": "NOAA NCEI Marine Microplastics Database - Ocean Surface (Professional Science)",
+      "biodiversity": "OBIS api.obis.org/v3/statistics",
+      "temperature_heat_stress": "NOAA Coral Reef Watch 5km daily (12 monthly snapshots)"
+    },
+    "built": "2026-10-13"
+  },
   "shap_mean_abs_contribution": {
     "plastic_coverage_percentage": 4.96,
     "fish_behavior_anomaly_index": 4.36,
@@ -105,6 +131,7 @@
     "water_temperature_and_bleaching_alert": "REAL - NOAA Coral Reef Watch 5km daily satellite SST, Degree Heating Weeks and Bleaching Alert Area at each station",
     "ph_oxygen_salinity_turbidity": "PRESET - station values (Copernicus Marine loader is implemented but needs a free account: `copernicusmarine login`)",
     "station_assignment": "ASSUMED - TrashCan images have no geotags, so images are assigned to stations in rotation",
+    "observational_plastic_biodiversity_model": "REAL DATA, ASSOCIATION ONLY - NCEI + OBIS + NOAA CRW, 698 cells, spatial-CV R\u00b2 0.848 (microplastics gain +0.001)",
     "impact_score_and_biodiversity_loss": "EXPERT FORMULA - XGBoost reproduces a documented hand-specified formula (synthetic training data); weights are assumptions, see src/modules/impact_scoring.py",
     "shap": "REAL - SHAP TreeExplainer on the XGBoost model (explains the model, which is trained on synthetic data)",
     "gradcam": "REAL - gradient-based Grad-CAM on the YOLO neck layers for the trash_plastic logit",

@@ -1,8 +1,10 @@
 # File Structure — What Each File Contains
 
-A map of the Teammate 1 module (underwater plastic detection & quantification on TrashCan 1.0).
-For *why* the project is designed this way see [README.md](README.md); for step-by-step run
-instructions see [GUIDE.md](GUIDE.md).
+A map of the whole MARIS system: the Teammate 1 plastic-detection module (TrashCan 1.0) plus the
+full assessment layer built on top of it (fish tracking, coral segmentation, real ocean data,
+impact scoring, explainability, dashboard). For *why* the detector is designed this way see
+[README.md](README.md); for run instructions see [GUIDE.md](GUIDE.md); for the running log of
+requests, mistakes and fixes see [prompt.md](prompt.md).
 
 ```
 aiml fa2/
@@ -10,8 +12,10 @@ aiml fa2/
 ├── GUIDE.md                      step-by-step "how to run" walkthrough
 ├── HANDOFF.md                    what Teammate 2 needs (the output CSV explained)
 ├── FILE_STRUCTURE.md             this file
+├── prompt.md                     project prompt + log of requests, mistakes, failures and fixes
+├── context.md                    architecture overview of the full system
 ├── requirements.txt              Python dependencies
-├── app.py                        Streamlit demo UI
+├── app.py                        Streamlit decision-support dashboard (6 pages)
 ├── .gitignore                    what is NOT committed (data, runs, pretrained weights)
 ├── .claude/launch.json           launch config for the Streamlit demo
 │
@@ -26,19 +30,40 @@ aiml fa2/
 │   │   └── evaluate.py               metrics, confusion matrix, PR curves, error analysis
 │   ├── inference/
 │   │   └── predict.py                run model on new images → CSV row
-│   └── utils/
-│       ├── common.py                 seeding + CPU/GPU selection
-│       ├── quantify.py               plastic count / area / coverage % calculation
-│       └── visualization.py          all plotting + drawing helpers
+│   ├── utils/
+│   │   ├── common.py                 seeding + CPU/GPU selection
+│   │   ├── quantify.py               plastic count / area / coverage % calculation
+│   │   ├── survey_sampling.py        plastic-balanced test-image sample for the batch run
+│   │   └── visualization.py          all plotting + drawing helpers
+│   ├── modules/                      full assessment layer
+│   │   ├── gradcam.py                real Grad-CAM on the YOLO neck layers
+│   │   ├── fish_tracking.py          ByteTrack over video frames + camera-motion compensation
+│   │   ├── bytetrack_trashcan.yaml   tracker thresholds tuned to this detector
+│   │   ├── fish_behavior.py          behavioural anomaly index (motion only from real tracks)
+│   │   ├── coral_segmentation.py     loads the SUIM U-Net (only if it passed its test gate)
+│   │   ├── coral_health.py           reef presence / cover / bleaching (U-Net + colour rule)
+│   │   ├── ocean_data.py             NOAA Coral Reef Watch per station (+ Copernicus loader)
+│   │   ├── water_quality.py          Water Quality Index + station presets
+│   │   ├── impact_scoring.py         image-level impact score (documented expert formula)
+│   │   ├── real_impact_data.py       observational model: NCEI microplastics + OBIS + NOAA
+│   │   ├── xai_engine.py             SHAP + rule-based recommendations
+│   │   └── geospatial_maps.py        station map
+│   └── run_assessment.py         batch pipeline -> CSVs, figures, metrics, executive report
 │
 ├── notebooks/                    report-friendly wrappers around src/
 │   ├── 01_trashcan_eda.ipynb
 │   ├── 02_preprocessing.ipynb
 │   ├── 03_model_evaluation.ipynb
-│   └── colab_train.ipynb         the actual GPU training run (Google Colab)
+│   ├── colab_train.ipynb         detector training on Colab (+ Trash-ICRA19 fallback)
+│   └── colab_train_suim_coral.ipynb   SUIM U-Net reef segmentation on Colab
 │
-├── models/plastic_detector/
-│   └── best_model.pt             trained weights (the final model)
+├── models/
+│   ├── plastic_detector/best_model.pt     trained YOLO weights
+│   ├── coral_segmenter/                   SUIM U-Net: config + TEST metrics + deep-sea domain check
+│   │                                      (suim_unet.pt weights are on Drive, git-ignored)
+│   └── impact_model/                      XGBoost models (+ observational/ real-data model)
+│
+├── docs/llm_improvement_prompt.md   ready-made prompt to ask another LLM for improvements
 │
 ├── outputs/
 │   ├── figures/                  EDA + evaluation + error-analysis PNGs
@@ -46,9 +71,10 @@ aiml fa2/
 │   └── predictions/
 │       └── plastic_predictions.csv   the handoff file for Teammate 2
 │
-├── data/                         (not in git — too large)
-│   ├── raw/trashcan/             downloaded TrashCan 1.0 dataset.zip + extracted files
-│   └── processed/                YOLO-format train/val/test + data.yaml + split_manifest.csv
+├── data/
+│   ├── raw/trashcan/             (not in git) TrashCan 1.0 dataset.zip + extracted files
+│   ├── processed/                (not in git) YOLO-format train/val/test + data.yaml + split_manifest.csv
+│   └── external/                 cached real data: NOAA station data, NCEI microplastics, OBIS cells
 │
 └── runs/                         (not in git) Ultralytics training logs/checkpoints
 ```
@@ -63,7 +89,7 @@ aiml fa2/
 | `GUIDE.md` | Practical walkthrough: what to type at each step, what input it needs, what output to expect. |
 | `HANDOFF.md` | For Teammate 2: every column of `plastic_predictions.csv` explained, what the numbers do/don't mean, and the honest accuracy caveat. |
 | `requirements.txt` | Dependencies: `ultralytics` (YOLO), `torch`, `opencv`, `pandas`, `pycocotools`, `imagehash` (duplicate detection), `scikit-learn`, `matplotlib`, `streamlit`, `jupyter`. |
-| `app.py` | Streamlit web demo: upload an underwater image → model runs → shows annotated image + plastic count, coverage %, confidence. Run with `streamlit run app.py`. |
+| `app.py` | Streamlit decision-support dashboard, 6 pages: diagnostic studio (plastic, Grad-CAM, fish, coral, impact score), station map, fish tracking, coral, SHAP + recommendations, survey table + report. Run with `.venv\Scripts\python -m streamlit run app.py`. |
 | `.gitignore` | Excludes large/regenerable things: raw & processed data, `runs/`, pretrained `yolo*.pt`. The trained `best_model.pt` and the predictions CSV **are** committed on purpose. |
 
 ## `src/` — the core code
@@ -135,7 +161,10 @@ Runs the model on a new image or folder: saves an annotated image, prints plasti
 | `figures/sample_predictions.png` | Model predictions on test images |
 | `figures/error_analysis_*.png` | Failure cases: low confidence, small objects, missed detections, cluttered scenes |
 | `metrics/dataset_validation_report.json` | Dataset stats: 7,212 images, 12,336 objects, per-class counts, duplicate groups |
-| `metrics/eval_metrics_test.json` | Test metrics. ⚠️ Current values (P 0.83, mAP50 0.68) came from a leaky split and are inflated — re-run `evaluate.py` with the corrected model before quoting. |
+| `metrics/eval_metrics_test.json` | Test metrics. ⚠️ Until the Colab retrain is copied in, the file wraps old values (P 0.83, mAP50 0.68) that came from a leaky split, under an explicit warning key. |
+| `metrics/comprehensive_system_metrics.json` | Whole-system summary: detection, tracking, coral, SHAP, provenance of every component. |
+| `reports/executive_impact_report.md` | Auto-generated report; every number is computed, with a Data Provenance section. |
+| `predictions/marine_biodiversity_assessment.csv`, `fish_tracks.csv`, `station_summary.csv` | Batch-pipeline outputs. |
 | `predictions/plastic_predictions.csv` | One row per processed image: plastic/debris count, plastic area, coverage %, confidence, class-wise counts, optional lat/lon/timestamp. |
 
 ## `data/` and `runs/` (not committed)

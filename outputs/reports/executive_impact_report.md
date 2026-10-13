@@ -54,7 +54,21 @@ U-Net with a resnet34 encoder trained on SUIM (8 classes). Results on the offici
 
 **Domain check on deep-sea footage:** on the 1313 TrashCan test frames (no reef), the U-Net alone marked 595 frames as >=2% reef (mud, sediment and rock). It is therefore only trusted together with the colour/texture coral check in auto mode, which reduces this to 0 frames.
 
-## 5. Survey Stations (NOAA Coral Reef Watch, real satellite data)
+## 5. Real-World Evidence: Microplastics vs. Recorded Biodiversity
+
+Built only from real public data: 13460 NOAA NCEI ocean-surface microplastic samples aggregated into 698 two-degree ocean cells, OBIS species counts for each cell, and NOAA Coral Reef Watch sea temperature and heat stress. XGBoost predicts log10 recorded species richness, with OBIS sampling effort and latitude as controls, evaluated by 5-fold spatial block CV (10-degree blocks).
+
+| Model | Held-out R² |
+|---|---|
+| Sampling effort only | 0.822 |
+| All features except microplastics | 0.847 |
+| All features incl. microplastics | **0.848** |
+
+Adding microplastics changes held-out R² by **+0.001**. Feature importance (mean |SHAP|): `log10_obis_records` 0.626, `sst_mean_c` 0.059, `abs_latitude` 0.056, `dhw_max` 0.055, `log10_microplastics` 0.027. Correlation between microplastic level and its SHAP contribution: -0.14 (negative = more plastic associated with fewer recorded species). This is an association across ocean regions, not proof that plastic causes species loss.
+
+![Observational model](../figures/real_world_plastic_biodiversity.png)
+
+## 6. Survey Stations (NOAA Coral Reef Watch, real satellite data)
 
 | Station | SST (°C) | DHW (°C-weeks) | Bleaching alert | Images assigned | Mean MPIS |
 |---|---|---|---|---|---|
@@ -66,7 +80,7 @@ U-Net with a resnet34 encoder trained on SUIM (8 classes). Results on the offici
 
 ---
 
-## 6. SHAP Attribution Summary (computed over all 40 transects)
+## 7. SHAP Attribution Summary (computed over all 40 transects)
 
 Most influential feature on average: **`plastic_coverage_percentage`**. SHAP values are relative to the model's
 average synthetic site, so a feature "lowers" the score when these images have less of it than that
@@ -85,7 +99,7 @@ average (e.g. most images have little or no plastic).
 
 ---
 
-## 7. Data Provenance
+## 8. Data Provenance
 
 | Component | Status |
 |---|---|
@@ -96,6 +110,7 @@ average (e.g. most images have little or no plastic).
 | Water Temperature And Bleaching Alert | REAL - NOAA Coral Reef Watch 5km daily satellite SST, Degree Heating Weeks and Bleaching Alert Area at each station |
 | Ph Oxygen Salinity Turbidity | PRESET - station values (Copernicus Marine loader is implemented but needs a free account: `copernicusmarine login`) |
 | Station Assignment | ASSUMED - TrashCan images have no geotags, so images are assigned to stations in rotation |
+| Observational Plastic Biodiversity Model | REAL DATA, ASSOCIATION ONLY - NCEI + OBIS + NOAA CRW, 698 cells, spatial-CV R² 0.848 (microplastics gain +0.001) |
 | Impact Score And Biodiversity Loss | EXPERT FORMULA - XGBoost reproduces a documented hand-specified formula (synthetic training data); weights are assumptions, see src/modules/impact_scoring.py |
 | Shap | REAL - SHAP TreeExplainer on the XGBoost model (explains the model, which is trained on synthetic data) |
 | Gradcam | REAL - gradient-based Grad-CAM on the YOLO neck layers for the trash_plastic logit |
@@ -103,7 +118,7 @@ average (e.g. most images have little or no plastic).
 
 ---
 
-## 8. Standard Decision-Support Recommendations
+## 9. Standard Decision-Support Recommendations
 
 Rule-based guidance templates, triggered by score thresholds:
 

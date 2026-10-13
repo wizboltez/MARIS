@@ -37,6 +37,8 @@ Marine Pollution Impact Score · biodiversity loss prediction · decision-suppor
 | 2026-10-12 | "Complete the stages that don't need training" | Real Grad-CAM, ByteTrack fish tracking, coral-presence check, NOAA CRW data, honest impact model, real station map. |
 | 2026-10-13 | "Keep everything real; train on Colab. If accuracy is low, use another dataset." | Colab notebooks for detector retrain (+ Trash-ICRA19 fallback) and SUIM U-Net, each with a quality gate. |
 | 2026-10-13 | "Keep updating prompt.md with the prompt, mistakes, failures and fixes." | This file. |
+| 2026-10-13 | Run the two jobs simultaneously or separately? Can job 2 (SUIM) go first? | Independent jobs: run in parallel on different machines (Colab + laptop RTX 3050 4 GB, or two accounts), not two GPU sessions on one free Colab account. Order doesn't matter technically; detector matters more. |
+| 2026-10-13 | Put the SUIM direct-download option into the notebook. | Added `SUIM_GDRIVE_FILE_ID` config. |
 
 ---
 
@@ -74,6 +76,8 @@ Marine Pollution Impact Score · biodiversity loss prediction · decision-suppor
 | A10 | Test harness used the wrong notebook cell index. | False failure in local notebook test. | Fixed the index; the notebook itself was fine. |
 | A11 | Could not verify the coral-presence thresholds on real reef images (none in the project). | Unknown true-positive rate on reefs. | SUIM TEST evaluation will measure it; documented as "not validated on reef imagery" in code. |
 | A12 | First Trash-ICRA19 dedupe draft compared hashes in a pure-Python double loop (~13M comparisons). | Would have been very slow on Colab. | Vectorised Hamming distance with NumPy. |
+| A14 | SUIM is a single 4.9 GB `SUIM.zip` on Google Drive (shows "can't scan for viruses" — normal for files >100 MB). Downloading to the laptop and re-uploading would waste time. | Slow setup. | Notebook config `SUIM_GDRIVE_FILE_ID`: downloads straight into Colab with gdown. |
+| A15 | My first gdown snippet used `--id`, which newer gdown versions removed; it also didn't handle Drive's "too many users" download block. | Would fail on current gdown / give a confusing crash. | Use the `https://drive.google.com/uc?id=...` URL form; assert the zip exists and is >100 MB with a clear message and fallback (put zip in `MyDrive/suim/`). |
 | A13 | Notebooks can't be run locally end-to-end (no GPU / Colab Drive). | Risk of discovering bugs mid-session on Colab. | Ran all non-GPU cells locally: split + leakage check on the real TrashCan data, COCO→YOLO conversion, ICRA19 VOC parser, phash dedupe, SUIM mask decoding + TEST/train separation on synthetic folders. Also tested that Grad-CAM/quantify work with a detection-only model and that the coral analyser works with/without a U-Net. |
 
 ---

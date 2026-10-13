@@ -22,7 +22,7 @@ Pollution Impact Score (0–100), biodiversity loss prediction, decision-support
 
 | Component | Method | Data | Status | Evidence |
 |---|---|---|---|---|
-| Plastic detection | YOLO11-seg (16 classes) | TrashCan 1.0, video-disjoint split (312 videos, 0 overlap) | Real, weak (retrain running) | `outputs/metrics/eval_metrics_test.json` |
+| Plastic detection | YOLO11s-seg (16 classes) | TrashCan 1.0, video-disjoint split (312 videos, 0 overlap) | Real: test mAP50 0.489; at conf 0.18 P 0.475, R 0.452 (95% CI over 53 videos) | `outputs/metrics/eval_metrics_test.json`, `test_bootstrap_confidence_intervals.json` |
 | Grad-CAM | Gradients of the class logit w.r.t. YOLO neck layers 16/19/22 | Same images | Real | ~32% of heat inside plastic boxes |
 | Fish tracking | ByteTrack (tuned thresholds) + phase-correlation camera-motion compensation | TrashCan test videos | Real, small sample | `outputs/predictions/fish_tracks.csv` |
 | Coral reef segmentation | U-Net, ResNet-34 encoder | SUIM (official TEST split) | Real: reef IoU 0.684 | `models/coral_segmenter/suim_test_metrics.json` |
@@ -54,7 +54,8 @@ NCEI microplastics + OBIS species + NOAA CRW (per 2° cell) ─► observational
 
 ## 4. Known limitations (stated in the report)
 
-- Plastic detector: low recall on unseen videos; false positives on the camera's on-screen text.
+- Plastic detector: misses about half of plastic on unseen videos (recall 0.452, 95% CI 0.32-0.59);
+  false positives on the camera's on-screen text. Fish recall is low (0.093), which limits tracking.
 - TrashCan has no geotags: survey images are assigned to stations in rotation.
 - Fish: only 9 usable tracks of moving animals, 1 near plastic, so no behaviour-change claim.
 - SUIM U-Net is out of domain on deep-sea footage (marked 595/1313 TrashCan frames as reef alone),

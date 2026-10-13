@@ -23,7 +23,30 @@ def load_plastic_metrics() -> dict | None:
     return out
 
 
+BOOTSTRAP_PATH = METRICS_DIR / "test_bootstrap_confidence_intervals.json"
+
+
+def load_operating_point() -> dict | None:
+    """trash_plastic at the pipeline's conf 0.18 on TEST, with 95% CI from a 53-video cluster bootstrap.
+
+    Values are strings like "0.452 [0.315, 0.594]".
+    """
+    if not BOOTSTRAP_PATH.exists():
+        return None
+    d = json.loads(BOOTSTRAP_PATH.read_text())
+    op = d.get("metrics", {}).get("plastic_018")
+    if not op:
+        return None
+    return {**op, "n_videos": d.get("n_videos"), "n_boot": d.get("n_boot")}
+
+
 def plastic_summary(short: bool = False) -> str:
+    op = load_operating_point()
+    if op is not None:
+        if short:
+            return f"plastic recall {op['recall'].split()[0]}"
+        return (f"trash_plastic on unseen test videos at conf 0.18: precision {op['precision']}, "
+                f"recall {op['recall']} (95% CI over {op['n_videos']} videos)")
     m = load_plastic_metrics()
     if m is None:
         return "plastic test metrics unavailable"

@@ -17,7 +17,7 @@
 |---|---|---|
 | **Mean Marine Pollution Impact Score (MPIS)** | **13.2 / 100** | Tiers: Low < 25, Moderate < 50, High < 75, Critical ≥ 75 |
 | **Mean Predicted Biodiversity Loss** | **10.3%** | Model output (synthetic training data) |
-| **Plastic Items Detected** | **13** items; found in 9 of 20 images with labelled plastic, plus 3 false-alarm images | plastic recall 0.37 on unseen test videos |
+| **Plastic Items Detected** | **13** items; found in 9 of 20 images with labelled plastic, plus 3 false-alarm images | plastic recall 0.452 on unseen test videos |
 | **Coral bleaching** | Not assessed | TrashCan frames are deep-sea (no reef); see NOAA station alerts below |
 | **Mean Fish Behavioral Anomaly Index** | **18.3 / 100** | 2 of 40 images have tracked moving animals |
 | **Transects at High / Critical Risk** | **0 of 40 (0.0%)** | MPIS ≥ 50 |
@@ -51,6 +51,8 @@ Phase 1: YOLO11-seg on TrashCan. Held-out test split (videos never used for trai
 | `animal_crab` | 0.827 | 0.333 | 0.389 | 0.310 |
 | `rov` | 0.618 | 0.664 | 0.643 | 0.471 |
 | **all 16 classes (box)** | 0.507 | 0.210 | 0.252 | 0.165 |
+
+**At the pipeline's operating threshold (conf 0.18), on the same test split:** trash_plastic precision 0.475 [0.337, 0.602], recall 0.452 [0.315, 0.594], F1 0.463 [0.340, 0.575] (95% CI, cluster bootstrap over 53 test videos, 1000 resamples). The table above uses Ultralytics' own best-F1 confidence, so its P/R differ. A threshold tuned on the validation split was also tried; validation has only 170 plastic items and it scored lower on test, so 0.18 was kept.
 
 Plastic recall is the main limit (most plastic items are still missed), and fish recall is very low, which limits how many fish can be tracked. Confusion matrix and PR/F1 curves: `outputs/figures/`; training curves: `outputs/figures/training_curves_yolo11s_seg_v2.png`.
 
@@ -123,7 +125,7 @@ average (e.g. most images have little or no plastic).
 | Component | Status |
 |---|---|
 | Plastic Detection | REAL - YOLO11-seg trained on TrashCan 1.0, run on real test images |
-| Plastic Detector Quality | Held-out test - trash_plastic test precision 0.61, recall 0.37, mAP50 0.49 (unseen videos) |
+| Plastic Detector Quality | Held-out test - trash_plastic on unseen test videos at conf 0.18: precision 0.475 [0.337, 0.602], recall 0.452 [0.315, 0.594] (95% CI over 53 videos) |
 | Fish Behavior | REAL, SMALL SAMPLE - ByteTrack over test video frames with camera-motion compensation; few mobile animals are tracked, so plastic-related behaviour change cannot be concluded |
 | Coral Health | TRAINED - U-Net (resnet34) on SUIM; official SUIM TEST reef IoU 0.684 (precision 0.76, recall 0.87). Not applied to TrashCan (deep-sea, no reef; the U-Net is out of domain there). Bleaching itself is still a colour rule inside the reef mask (SUIM has no bleaching labels). |
 | Water Temperature And Bleaching Alert | REAL - NOAA Coral Reef Watch 5km daily satellite SST, Degree Heating Weeks and Bleaching Alert Area at each station |

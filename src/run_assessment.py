@@ -60,7 +60,7 @@ from src.modules.xai_engine import (
     generate_explainable_recommendations,
     plot_shap_summary_chart,
 )
-from src.utils.detector_metrics import load_plastic_metrics, plastic_summary
+from src.utils.detector_metrics import load_operating_point, load_plastic_metrics, plastic_summary
 from src.utils.quantify import quantify
 from src.utils.survey_sampling import has_plastic_label, select_survey_images
 from src.utils.visualization import draw_detections
@@ -469,6 +469,7 @@ def run_complete_assessment(sample_limit: int = 40):
 
     eval_path = METRICS_DIR / "eval_metrics_test.json"
     det_eval = json.loads(eval_path.read_text()) if eval_path.exists() else {}
+    op = load_operating_point()
     if load_plastic_metrics() and det_eval.get("per_class"):
         pc = {r["class"]: r for r in det_eval["per_class"]}
         show = ["trash_plastic", "trash_metal", "trash_fishing_gear", "animal_fish", "animal_eel", "animal_crab", "rov"]
@@ -482,7 +483,16 @@ def run_complete_assessment(sample_limit: int = 40):
             f"{rows}\n"
             f"| **all 16 classes (box)** | {det_eval['box_precision']:.3f} | {det_eval['box_recall']:.3f} | "
             f"{det_eval['box_map50']:.3f} | {det_eval['box_map50_95']:.3f} |\n\n"
-            "Plastic recall is the main limit (most plastic items are still missed), and fish recall is very low, "
+            + (
+                f"**At the pipeline's operating threshold (conf 0.18), on the same test split:** trash_plastic "
+                f"precision {op['precision']}, recall {op['recall']}, F1 {op['f1']} "
+                f"(95% CI, cluster bootstrap over {op['n_videos']} test videos, {op['n_boot']} resamples). "
+                "The table above uses Ultralytics' own best-F1 confidence, so its P/R differ. A threshold tuned on "
+                "the validation split was also tried; validation has only 170 plastic items and it scored lower on "
+                "test, so 0.18 was kept.\n\n"
+                if op else ""
+            )
+            + "Plastic recall is the main limit (most plastic items are still missed), and fish recall is very low, "
             "which limits how many fish can be tracked. Confusion matrix and PR/F1 curves: `outputs/figures/`; "
             "training curves: `outputs/figures/training_curves_yolo11s_seg_v2.png`."
         )

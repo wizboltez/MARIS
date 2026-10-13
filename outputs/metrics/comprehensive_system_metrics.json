@@ -251,7 +251,7 @@
   },
   "data_provenance": {
     "plastic_detection": "REAL - YOLO11-seg trained on TrashCan 1.0, run on real test images",
-    "plastic_detector_quality": "Held-out test - trash_plastic test precision 0.61, recall 0.37, mAP50 0.49 (unseen videos)",
+    "plastic_detector_quality": "Held-out test - trash_plastic on unseen test videos at conf 0.18: precision 0.475 [0.337, 0.602], recall 0.452 [0.315, 0.594] (95% CI over 53 videos)",
     "fish_behavior": "REAL, SMALL SAMPLE - ByteTrack over test video frames with camera-motion compensation; few mobile animals are tracked, so plastic-related behaviour change cannot be concluded",
     "coral_health": "TRAINED - U-Net (resnet34) on SUIM; official SUIM TEST reef IoU 0.684 (precision 0.76, recall 0.87). Not applied to TrashCan (deep-sea, no reef; the U-Net is out of domain there). Bleaching itself is still a colour rule inside the reef mask (SUIM has no bleaching labels).",
     "water_temperature_and_bleaching_alert": "REAL - NOAA Coral Reef Watch 5km daily satellite SST, Degree Heating Weeks and Bleaching Alert Area at each station",

@@ -30,7 +30,8 @@ Streamlit dashboard (6 pages), training on Google Colab (free T4) and a 4 GB RTX
 WHAT EXISTS AND IS REAL
 1. Plastic detection: YOLO11-seg on TrashCan 1.0 (16 classes, deep-sea ROV footage, JAMSTEC).
    Video-disjoint train/val/test split (312 videos, 0 overlap). Current model: trash_plastic
-   precision ~0.37, recall ~0.31 on unseen videos. A YOLO11s-seg retrain is running on Colab
+   (superseded: see docs/llm_finish_fast_prompt.md for current numbers) old model precision ~0.37,
+   recall ~0.31 on unseen videos. A YOLO11s-seg retrain is running on Colab
    (overall val mAP50 ~0.21 at epoch 54/120). Fallback: add Trash-ICRA19 (phash-deduplicated).
    Known failure: false "plastic" on the camera's on-screen text overlay.
 2. Grad-CAM: real gradients of the class logit w.r.t. YOLO neck layers; ~32% of heat falls inside

@@ -374,15 +374,15 @@ if page == "🔬 Multi-Modal Diagnostic Studio":
                 if yolo_res.masks is not None:
                     masks = np.stack([cv2.resize(m, (w, h)) > 0.5 for m in yolo_res.masks.data.cpu().numpy()])
                 annotated_plastic = draw_detections(img_bgr, xyxy, cls_ids, confs, CLASS_NAMES, masks)
-            st.image(cv2.cvtColor(annotated_plastic, cv2.COLOR_BGR2RGB), use_container_width=True, caption="YOLOv11 Instance Segmentation (Masks & Bounding Boxes)")
+            st.image(cv2.cvtColor(annotated_plastic, cv2.COLOR_BGR2RGB), width="stretch", caption="YOLOv11 Instance Segmentation (Masks & Bounding Boxes)")
 
         with tab_v2:
             annotated_fish = draw_fish_tracks_and_behavior(img_bgr, fish_detections, fish_stats, plastic_boxes)
-            st.image(cv2.cvtColor(annotated_fish, cv2.COLOR_BGR2RGB), use_container_width=True, caption="Fish Tracking Vectors & Behavioral Stress Analysis")
+            st.image(cv2.cvtColor(annotated_fish, cv2.COLOR_BGR2RGB), width="stretch", caption="Fish Tracking Vectors & Behavioral Stress Analysis")
 
         with tab_v3:
             annotated_coral = draw_coral_health_overlay(img_bgr, coral_stats)
-            st.image(cv2.cvtColor(annotated_coral, cv2.COLOR_BGR2RGB), use_container_width=True, caption="Coral Substrate & Bleaching Health Diagnostic (Green: Healthy, Yellow: Stressed, White: Bleached)")
+            st.image(cv2.cvtColor(annotated_coral, cv2.COLOR_BGR2RGB), width="stretch", caption="Coral Substrate & Bleaching Health Diagnostic (Green: Healthy, Yellow: Stressed, White: Bleached)")
 
         with tab_v4:
             detected_ids = sorted({int(c) for c in yolo_res.boxes.cls.cpu().numpy()}) if yolo_res.boxes is not None else []
@@ -400,7 +400,7 @@ if page == "🔬 Multi-Modal Diagnostic Studio":
                     cv2.rectangle(cam_img, tuple(box[:2].astype(int)), tuple(box[2:].astype(int)), (255, 255, 255), 2)
             st.image(
                 cv2.cvtColor(cam_img, cv2.COLOR_BGR2RGB),
-                use_container_width=True,
+                width="stretch",
                 caption=(
                     f"Grad-CAM for '{cam_res['class_name']}' (gradients of the class logit w.r.t. YOLO neck layers "
                     f"16/19/22). Max class score {cam_res['max_score']:.2f}; white boxes = detections of this class."
@@ -430,10 +430,10 @@ elif page == "🗺️ Geospatial Plastic Pollution Maps":
     filtered_df = df_stations[df_stations["impact_tier"].isin(tier_filter)]
 
     fig_map = create_interactive_plastic_map(filtered_df)
-    st.plotly_chart(fig_map, use_container_width=True)
+    st.plotly_chart(fig_map, width="stretch")
 
     st.markdown("#### 📋 Survey Station Records")
-    st.dataframe(filtered_df, use_container_width=True)
+    st.dataframe(filtered_df, width="stretch")
 
 # ==============================================================================
 # TAB 3: FISH BEHAVIOR LAB
@@ -481,12 +481,12 @@ elif page == "🐟 Fish Behavior & Movement Tracking":
         st.image(
             cv2.cvtColor(draw_trajectories(frame, upto, plastic), cv2.COLOR_BGR2RGB),
             caption="Track paths up to this frame (red boxes = plastic detected in this frame)",
-            use_container_width=True,
+            width="stretch",
         )
         st.markdown("#### Track table")
         st.dataframe(
             tracks.drop(columns=["image_ids", "path_x", "path_y"]).round(2).sort_values("n_frames", ascending=False),
-            use_container_width=True,
+            width="stretch",
         )
         st.caption(
             "Speed = camera-compensated displacement per frame step. Turn = angle between successive moves "
@@ -499,23 +499,32 @@ elif page == "🐟 Fish Behavior & Movement Tracking":
 # ==============================================================================
 elif page == "🪸 Coral Reef Health & Bleaching Diagnostic":
     st.subheader("Coral Reef Health Assessment & Bleaching Severity")
-    st.caption(
-        "Colour/texture heuristic with NOAA-style alert labels (a trained SUIM coral model is pending). Bleaching is "
-        "only scored when a coral-presence check passes; TrashCan frames are deep-sea footage, so they show "
-        "'No coral detected'. Upload a reef photo in the Diagnostic Studio to try it. The station's real NOAA "
-        "satellite alert is shown in the Studio's station card."
-    )
+    seg = coral_analyzer.segmenter
+    if seg is not None:
+        tm = seg.test_metrics
+        st.caption(
+            f"Reef area from a U-Net trained on SUIM (official TEST split: reef IoU {tm['reef_iou']:.3f}, precision "
+            f"{tm['reef_precision']:.2f}, recall {tm['reef_recall']:.2f}). SUIM has no bleaching labels, so bleaching is "
+            "a colour rule applied only inside the predicted reef area. The U-Net is out of domain on deep-sea footage, "
+            "so in auto mode it must agree with a colour/texture coral check; TrashCan frames show 'No coral detected'. "
+            "Upload a reef photo in the Diagnostic Studio (habitat 'Coral reef' or 'Auto') to try it."
+        )
+    else:
+        st.caption(
+            "Colour/texture heuristic with NOAA-style alert labels (no trained coral model found in "
+            "models/coral_segmenter/). Bleaching is only scored when a coral-presence check passes."
+        )
     last = st.session_state.get("last_diagnostic")
 
     col1, col2 = st.columns([1, 1])
     with col1:
         if last is not None:
             coral_viz = draw_coral_health_overlay(last["image_bgr"], last["coral_stats"])
-            st.image(cv2.cvtColor(coral_viz, cv2.COLOR_BGR2RGB), caption="Coral heuristic on the Diagnostic Studio image", use_container_width=True)
+            st.image(cv2.cvtColor(coral_viz, cv2.COLOR_BGR2RGB), caption="Coral heuristic on the Diagnostic Studio image", width="stretch")
         else:
             coral_sample = (FIGURES_DIR / "coral_health_assessment.png")
             if coral_sample.exists():
-                st.image(str(coral_sample), caption="Sample frame from the batch pipeline", use_container_width=True)
+                st.image(str(coral_sample), caption="Sample frame from the batch pipeline", width="stretch")
 
     with col2:
         if last is not None:
@@ -573,7 +582,7 @@ elif page == "📑 Survey Database & Executive Report":
     if csv_path.exists():
         df_all = pd.read_csv(csv_path)
         st.markdown(f"#### Multi-Modal Survey Table ({len(df_all)} Transects)")
-        st.dataframe(df_all, use_container_width=True)
+        st.dataframe(df_all, width="stretch")
 
         st.download_button(
             label="📥 Download Full Assessment CSV",

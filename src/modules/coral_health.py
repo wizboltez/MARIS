@@ -78,6 +78,12 @@ class CoralHealthAnalyzer:
         # Stressed / pale coral (intermediate L, moderate S)
         stressed_mask = (l_channel >= 135) & (l_channel <= 155) & (s_channel < 95) & (depth_weight > 0.2) & (~healthy_mask) & (~algae_mask)
 
+        # Full-image pigmented-coral check (computed before any reef-mask restriction)
+        full_pigmented_fraction = float(healthy_mask.mean())
+        full_pigmented_texture = (
+            float(np.abs(cv2.Laplacian(gray, cv2.CV_32F))[healthy_mask].mean()) if healthy_mask.any() else 0.0
+        )
+
         # With the SUIM U-Net, colour classes are only counted inside the predicted reef area
         reef_fraction = None
         if self.segmenter is not None and habitat != "non_reef":
@@ -111,7 +117,13 @@ class CoralHealthAnalyzer:
         elif reef_fraction is not None:
             from src.modules.coral_segmentation import MIN_REEF_FRACTION
 
-            coral_present = reef_fraction >= MIN_REEF_FRACTION
+            # The SUIM U-Net is out of domain on deep-sea footage: it marked 595/1313 TrashCan test
+            # frames as >=2% reef (mud / sediment / rock). So in auto mode the U-Net must AND the
+            # colour/texture presence check (0/1313 deep-sea false passes) before coral is declared.
+            # (Colour classes above are already restricted to the reef mask, so recompute the check
+            # on the full-image pigmented mask.)
+            colour_present = full_pigmented_fraction >= MIN_PIGMENTED_FRACTION and full_pigmented_texture >= MIN_PIGMENTED_TEXTURE
+            coral_present = reef_fraction >= MIN_REEF_FRACTION and colour_present
         else:
             coral_present = pigmented_fraction >= MIN_PIGMENTED_FRACTION and pigmented_texture >= MIN_PIGMENTED_TEXTURE
         method = "SUIM U-Net reef mask + colour" if reef_fraction is not None else "colour/texture heuristic"

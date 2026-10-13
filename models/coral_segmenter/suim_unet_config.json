@@ -1,0 +1,28 @@
+{
+  "encoder": "resnet34",
+  "classes": [
+    "water",
+    "divers",
+    "plants_seagrass",
+    "wrecks",
+    "robots",
+    "reef_invertebrates",
+    "fish_vertebrates",
+    "seafloor_rocks"
+  ],
+  "reef_class": 5,
+  "input_hw": [
+    320,
+    480
+  ],
+  "mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "std": [
+    0.229,
+    0.224,
+    0.225
+  ]
+}

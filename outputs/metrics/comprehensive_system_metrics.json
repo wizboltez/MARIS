@@ -32,6 +32,42 @@
     "median_speed_near_plastic": 8.71,
     "median_speed_away_from_plastic": 10.91
   },
+  "coral_segmenter_suim_test": {
+    "dataset": "SUIM TEST (official split)",
+    "model": "U-Net resnet34",
+    "input_hw": [
+      320,
+      480
+    ],
+    "n_test_images": 110,
+    "pixel_accuracy": 0.8538,
+    "mean_iou": 0.6836,
+    "per_class_iou": {
+      "water": 0.8812,
+      "divers": 0.8241,
+      "plants_seagrass": 0.3091,
+      "wrecks": 0.6585,
+      "robots": 0.7068,
+      "reef_invertebrates": 0.6843,
+      "fish_vertebrates": 0.7713,
+      "seafloor_rocks": 0.6332
+    },
+    "reef_iou": 0.6843,
+    "reef_precision": 0.762,
+    "reef_recall": 0.8703,
+    "gate_reef_iou": 0.5,
+    "passed_gate": true
+  },
+  "coral_segmenter_deep_sea_domain_check": {
+    "what": "SUIM U-Net reef predictions on the 1313 deep-sea TrashCan test frames (no coral reef in this footage)",
+    "n_frames": 1313,
+    "frames_reef_ge_2pct_unet_only": 595,
+    "frames_reef_ge_5pct_unet_only": 180,
+    "frames_reef_ge_20pct_unet_only": 29,
+    "median_reef_fraction": 0.018,
+    "frames_coral_declared_auto_mode_unet_AND_colour_check": 0,
+    "conclusion": "U-Net is out of domain on deep-sea ROV footage (marks mud/sediment/rock as reef); auto mode therefore requires U-Net AND colour/texture check."
+  },
   "shap_mean_abs_contribution": {
     "plastic_coverage_percentage": 4.96,
     "fish_behavior_anomaly_index": 4.36,
@@ -65,7 +101,7 @@
     "plastic_detection": "REAL - YOLO11-seg trained on TrashCan 1.0, run on real test images",
     "plastic_detector_quality": "Weak - trash_plastic precision ~0.37, recall ~0.31 on leak-free images (see HANDOFF.md)",
     "fish_behavior": "REAL, SMALL SAMPLE - ByteTrack over test video frames with camera-motion compensation; few mobile animals are tracked, so plastic-related behaviour change cannot be concluded",
-    "coral_health": "NOT ASSESSED for TrashCan (deep-sea ROV footage, no reef). For other photos: colour/texture heuristic with a coral-presence check; a trained SUIM coral model is pending",
+    "coral_health": "TRAINED - U-Net (resnet34) on SUIM; official SUIM TEST reef IoU 0.684 (precision 0.76, recall 0.87). Not applied to TrashCan (deep-sea, no reef; the U-Net is out of domain there). Bleaching itself is still a colour rule inside the reef mask (SUIM has no bleaching labels).",
     "water_temperature_and_bleaching_alert": "REAL - NOAA Coral Reef Watch 5km daily satellite SST, Degree Heating Weeks and Bleaching Alert Area at each station",
     "ph_oxygen_salinity_turbidity": "PRESET - station values (Copernicus Marine loader is implemented but needs a free account: `copernicusmarine login`)",
     "station_assignment": "ASSUMED - TrashCan images have no geotags, so images are assigned to stations in rotation",

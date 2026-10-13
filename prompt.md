@@ -39,6 +39,10 @@ Marine Pollution Impact Score · biodiversity loss prediction · decision-suppor
 | 2026-10-13 | "Keep updating prompt.md with the prompt, mistakes, failures and fixes." | This file. |
 | 2026-10-13 | Run the two jobs simultaneously or separately? Can job 2 (SUIM) go first? | Independent jobs: run in parallel on different machines (Colab + laptop RTX 3050 4 GB, or two accounts), not two GPU sessions on one free Colab account. Order doesn't matter technically; detector matters more. |
 | 2026-10-13 | Put the SUIM direct-download option into the notebook. | Added `SUIM_GDRIVE_FILE_ID` config. |
+| 2026-10-13 | SUIM U-Net training progress check (epoch 28). | Val reef IoU 0.70–0.75 (gate 0.50); val mIoU plateaued ~0.63 from epoch 21 while train loss keeps falling (mild overfitting; early stopping keeps best checkpoint). Val set is small (~10%), so epoch-to-epoch noise is ±0.05. Final verdict pending on the official SUIM TEST split. Warnings seen (HF_TOKEN, GradScaler deprecation) are harmless. |
+| 2026-10-13 | SUIM progress check (epoch 50). | Val reef IoU stabilised at 0.75–0.76 from epoch ~36; best val mIoU 0.663 (epoch 42, saved checkpoint). Gains in later epochs came from the cosine LR decay; no val degradation. Expect early stop at ~54 or the 60-epoch cap. |
+| 2026-10-13 | **SUIM U-Net final result.** | **PASS — reef IoU 0.684 on the official SUIM TEST split** (gate 0.50). Lower than val (~0.75) as expected for a held-out split; val was also used for checkpoint selection. Next: copy `suim_unet.pt`, `suim_unet_config.json`, `suim_test_metrics.json` into `models/coral_segmenter/`. |
+| 2026-10-13 | SUIM model files copied into `models/coral_segmenter/`; asked what 0.68 means and what's next. | Explained IoU. Model integrated: TEST reef IoU 0.684, precision 0.762, recall 0.870, mIoU 0.684, pixel acc 0.854. Report + dashboard now show these numbers from the metrics JSON. |
 
 ---
 
@@ -57,6 +61,7 @@ Marine Pollution Impact Score · biodiversity loss prediction · decision-suppor
 | P9 | **Misleading impact-model docstring**: claimed synthetic data was "calibrated against" papers. | Code review. | Rewritten as a documented expert formula (papers motivate directions only); `coral_present` feature so "no coral" ≠ healthy; held-out R² reported (0.945) with a note that it measures formula reproduction, not ecology. |
 | P10 | **Detector reacts to on-screen camera text** (timestamps/HUD) → false "plastic". | Grad-CAM heat on HUD text; false plastic box on HUD in tracking figure. | Report it. Mitigation: retraining (Colab); optionally mask the HUD regions at inference. |
 | P11 | **Too little fish data near plastic**: 9 usable mobile tracks, 1 near plastic. | Tracking summary. | State the limitation; behaviour-change claims not supported by this dataset. Fish4Knowledge (brief) could add fish video if needed. |
+| P12 | **SUIM U-Net is out of domain on deep-sea footage**: on the 1313 TrashCan test frames (no reef) it marked 595 frames as >=2% reef — mud, sediment and rock coloured as reef. | Ran the U-Net over every TrashCan test frame and looked at the top predictions. | Auto mode requires U-Net AND the colour/texture coral check -> 0/1313 false positives. TrashCan frames stay 'non_reef'. Saved as `models/coral_segmenter/domain_check_trashcan.json` and reported. Lesson: a good test score on one dataset does not transfer to a different domain; always check on the target imagery. |
 
 ---
 
@@ -78,6 +83,9 @@ Marine Pollution Impact Score · biodiversity loss prediction · decision-suppor
 | A12 | First Trash-ICRA19 dedupe draft compared hashes in a pure-Python double loop (~13M comparisons). | Would have been very slow on Colab. | Vectorised Hamming distance with NumPy. |
 | A14 | SUIM is a single 4.9 GB `SUIM.zip` on Google Drive (shows "can't scan for viruses" — normal for files >100 MB). Downloading to the laptop and re-uploading would waste time. | Slow setup. | Notebook config `SUIM_GDRIVE_FILE_ID`: downloads straight into Colab with gdown. |
 | A15 | My first gdown snippet used `--id`, which newer gdown versions removed; it also didn't handle Drive's "too many users" download block. | Would fail on current gdown / give a confusing crash. | Use the `https://drive.google.com/uc?id=...` URL form; assert the zip exists and is >100 MB with a clear message and fallback (put zip in `MyDrive/suim/`). |
+| A16 | Headless dashboard test (Streamlit AppTest) failed: relative `app.py` path resolves against the test script's folder. | Test didn't start. | Pass the absolute path. All 6 pages then ran with 0 exceptions. |
+| A17 | Dashboard used `use_container_width`, deprecated (removal date 2025-12-31 already passed). | Warnings in the server log; would break on a newer Streamlit. | Replaced all 11 uses with `width="stretch"`. |
+| A18 | `suim_unet.pt` is ~98 MB (GitHub warns >50 MB, hard limit 100 MB). | Risky to commit. | Git-ignored the `.pt`; config + metrics JSONs committed; weights live on Drive (`MyDrive/suim/`). Use Git LFS if teammates need it in the repo. |
 | A13 | Notebooks can't be run locally end-to-end (no GPU / Colab Drive). | Risk of discovering bugs mid-session on Colab. | Ran all non-GPU cells locally: split + leakage check on the real TrashCan data, COCO→YOLO conversion, ICRA19 VOC parser, phash dedupe, SUIM mask decoding + TEST/train separation on synthetic folders. Also tested that Grad-CAM/quantify work with a detection-only model and that the coral analyser works with/without a U-Net. |
 
 ---
@@ -86,7 +94,7 @@ Marine Pollution Impact Score · biodiversity loss prediction · decision-suppor
 
 - **Real:** plastic detection (weak until retrain), Grad-CAM, fish tracking, NOAA CRW temperature / heat stress / alerts, SHAP, station map.
 - **Assumed:** image→station assignment (TrashCan has no geotags); pH / DO / salinity / turbidity (until `copernicusmarine login`); impact-score & biodiversity-loss formula weights.
-- **In progress:** Colab training —
+- **Training status:**
   - `notebooks/colab_train.ipynb`: YOLO11s-seg on TrashCan; gate `trash_plastic` test mAP50 ≥ 0.40, else Phase 2 adds Trash-ICRA19 (deduplicated against TrashCan val/test) and keeps whichever is better on the same test split.
-  - `notebooks/colab_train_suim_coral.ipynb`: U-Net (ResNet-34) on SUIM; gate reef IoU ≥ 0.50 on the official TEST split. Note: SUIM has no bleached/healthy labels — it gives reef location; bleaching stays a colour rule inside the reef mask.
+  - `notebooks/colab_train_suim_coral.ipynb`: U-Net (ResNet-34) on SUIM — **DONE, PASS: TEST reef IoU 0.684** (gate 0.50). Integrated; out of domain on deep-sea footage (P12). Note: SUIM has no bleached/healthy labels — it gives reef location; bleaching stays a colour rule inside the reef mask.
 - **Fallback datasets if gates fail:** detector → Trash-ICRA19 (built in); coral → larger encoder / resolution first, then a healthy-vs-bleached coral image dataset for bleaching specifically.

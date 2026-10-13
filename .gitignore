@@ -28,3 +28,7 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Large trained weights (~98 MB): kept on Google Drive (MyDrive/suim/suim_unet.pt);
+# the small config + test-metrics JSONs next to it ARE committed.
+models/coral_segmenter/*.pt

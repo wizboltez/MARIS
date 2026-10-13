@@ -1,0 +1,10 @@
+{
+  "what": "SUIM U-Net reef predictions on the 1313 deep-sea TrashCan test frames (no coral reef in this footage)",
+  "n_frames": 1313,
+  "frames_reef_ge_2pct_unet_only": 595,
+  "frames_reef_ge_5pct_unet_only": 180,
+  "frames_reef_ge_20pct_unet_only": 29,
+  "median_reef_fraction": 0.018,
+  "frames_coral_declared_auto_mode_unet_AND_colour_check": 0,
+  "conclusion": "U-Net is out of domain on deep-sea ROV footage (marks mud/sediment/rock as reef); auto mode therefore requires U-Net AND colour/texture check."
+}

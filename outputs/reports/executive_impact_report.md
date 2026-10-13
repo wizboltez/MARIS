@@ -4,7 +4,7 @@
 **Evaluation Scope**: 40 TrashCan 1.0 test images (20 with labelled plastic, 20 without)
 **Core Objective**: Detect underwater plastic waste, track fish behavioral changes, evaluate coral bleaching, integrate water quality telemetry, and forecast ecological biodiversity loss.
 
-> **Read this first.** Real: plastic detection, Grad-CAM, fish tracking, NOAA satellite sea temperature and
+> **Read this first.** Real: plastic detection, Grad-CAM, fish tracking, SUIM reef segmentation, NOAA satellite SST and
 > bleaching alerts. Assumed: the image-to-station assignment (TrashCan has no geotags), pH / oxygen / salinity /
 > turbidity unless Copernicus is configured, and the expert formula behind the impact score and biodiversity
 > loss (Section 2, item 5). Treat the scores as a demonstration of the pipeline, not as ecological findings.
@@ -28,7 +28,7 @@
 
 1. **Plastic detection & segmentation**: YOLO11-seg trained on TrashCan 1.0; coverage % from real pixel masks.
 2. **Fish detection & tracking**: the same detector + ByteTrack across consecutive video frames, with ROV camera motion removed by phase correlation; speed, turning and distance to plastic per track.
-3. **Coral health**: skipped for deep-sea TrashCan frames; for other photos a colour/texture heuristic with a coral-presence check.
+3. **Coral health**: U-Net reef segmentation trained on SUIM (see Section 4) plus a colour rule for bleaching inside the reef area; skipped for deep-sea TrashCan frames.
 4. **Water quality**: Water Quality Index from temperature (NOAA CRW satellite), pH, dissolved oxygen, salinity and turbidity.
 5. **Impact fusion**: XGBoost regressors predict the MPIS (0–100) and biodiversity loss % (expert-formula targets; held-out R² 0.945 for MPIS).
 6. **Explainability**: SHAP TreeExplainer attributions for every transect, and Grad-CAM on the detector.
@@ -41,7 +41,20 @@
 
 53 test videos tracked; 85 animal tracks, 9 mobile (fish/eel/crab) tracks of 3+ frames ({'eel': 4, 'fish': 3, 'crab': 2}). Median mobile speed 10.28 px/frame vs. 0.9 px/frame for near-static animals (measurement noise floor). Mobile tracks passing within 25% of the image diagonal of plastic: 1 - too few to test whether plastic changes behaviour.
 
-## 4. Survey Stations (NOAA Coral Reef Watch, real satellite data)
+## 4. Coral Reef Segmentation Model
+
+U-Net with a resnet34 encoder trained on SUIM (8 classes). Results on the official SUIM TEST split (110 images, never used for training or model selection):
+
+| Metric | Value |
+|---|---|
+| Reef IoU (reefs & invertebrates) | **0.684** (gate 0.5) |
+| Reef precision / recall | 0.762 / 0.870 |
+| Mean IoU (8 classes) | 0.684 |
+| Pixel accuracy | 0.854 |
+
+**Domain check on deep-sea footage:** on the 1313 TrashCan test frames (no reef), the U-Net alone marked 595 frames as >=2% reef (mud, sediment and rock). It is therefore only trusted together with the colour/texture coral check in auto mode, which reduces this to 0 frames.
+
+## 5. Survey Stations (NOAA Coral Reef Watch, real satellite data)
 
 | Station | SST (°C) | DHW (°C-weeks) | Bleaching alert | Images assigned | Mean MPIS |
 |---|---|---|---|---|---|
@@ -53,7 +66,7 @@
 
 ---
 
-## 5. SHAP Attribution Summary (computed over all 40 transects)
+## 6. SHAP Attribution Summary (computed over all 40 transects)
 
 Most influential feature on average: **`plastic_coverage_percentage`**. SHAP values are relative to the model's
 average synthetic site, so a feature "lowers" the score when these images have less of it than that
@@ -72,14 +85,14 @@ average (e.g. most images have little or no plastic).
 
 ---
 
-## 6. Data Provenance
+## 7. Data Provenance
 
 | Component | Status |
 |---|---|
 | Plastic Detection | REAL - YOLO11-seg trained on TrashCan 1.0, run on real test images |
 | Plastic Detector Quality | Weak - trash_plastic precision ~0.37, recall ~0.31 on leak-free images (see HANDOFF.md) |
 | Fish Behavior | REAL, SMALL SAMPLE - ByteTrack over test video frames with camera-motion compensation; few mobile animals are tracked, so plastic-related behaviour change cannot be concluded |
-| Coral Health | NOT ASSESSED for TrashCan (deep-sea ROV footage, no reef). For other photos: colour/texture heuristic with a coral-presence check; a trained SUIM coral model is pending |
+| Coral Health | TRAINED - U-Net (resnet34) on SUIM; official SUIM TEST reef IoU 0.684 (precision 0.76, recall 0.87). Not applied to TrashCan (deep-sea, no reef; the U-Net is out of domain there). Bleaching itself is still a colour rule inside the reef mask (SUIM has no bleaching labels). |
 | Water Temperature And Bleaching Alert | REAL - NOAA Coral Reef Watch 5km daily satellite SST, Degree Heating Weeks and Bleaching Alert Area at each station |
 | Ph Oxygen Salinity Turbidity | PRESET - station values (Copernicus Marine loader is implemented but needs a free account: `copernicusmarine login`) |
 | Station Assignment | ASSUMED - TrashCan images have no geotags, so images are assigned to stations in rotation |
@@ -90,7 +103,7 @@ average (e.g. most images have little or no plastic).
 
 ---
 
-## 7. Standard Decision-Support Recommendations
+## 8. Standard Decision-Support Recommendations
 
 Rule-based guidance templates, triggered by score thresholds:
 

@@ -1,0 +1,26 @@
+{
+  "dataset": "SUIM TEST (official split)",
+  "model": "U-Net resnet34",
+  "input_hw": [
+    320,
+    480
+  ],
+  "n_test_images": 110,
+  "pixel_accuracy": 0.8538,
+  "mean_iou": 0.6836,
+  "per_class_iou": {
+    "water": 0.8812,
+    "divers": 0.8241,
+    "plants_seagrass": 0.3091,
+    "wrecks": 0.6585,
+    "robots": 0.7068,
+    "reef_invertebrates": 0.6843,
+    "fish_vertebrates": 0.7713,
+    "seafloor_rocks": 0.6332
+  },
+  "reef_iou": 0.6843,
+  "reef_precision": 0.762,
+  "reef_recall": 0.8703,
+  "gate_reef_iou": 0.5,
+  "passed_gate": true
+}

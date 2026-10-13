@@ -410,6 +410,36 @@ def run_complete_assessment(sample_limit: int = 40):
         "REAL - Copernicus Marine model values" if any_copernicus
         else "PRESET - station values (Copernicus Marine loader is implemented but needs a free account: `copernicusmarine login`)"
     )
+    seg_dir = PROJECT_ROOT / "models" / "coral_segmenter"
+    coral_test = json.loads((seg_dir / "suim_test_metrics.json").read_text()) if (seg_dir / "suim_test_metrics.json").exists() else None
+    coral_domain = json.loads((seg_dir / "domain_check_trashcan.json").read_text()) if (seg_dir / "domain_check_trashcan.json").exists() else None
+    if coral_test:
+        coral_status = (
+            f"TRAINED - U-Net ({coral_test['model'].split()[-1]}) on SUIM; official SUIM TEST reef IoU {coral_test['reef_iou']:.3f} "
+            f"(precision {coral_test['reef_precision']:.2f}, recall {coral_test['reef_recall']:.2f}). Not applied to TrashCan "
+            "(deep-sea, no reef; the U-Net is out of domain there). Bleaching itself is still a colour rule inside the reef mask "
+            "(SUIM has no bleaching labels)."
+        )
+        coral_section = (
+            f"U-Net with a {coral_test['model'].split()[-1]} encoder trained on SUIM (8 classes). Results on the official SUIM TEST "
+            f"split ({coral_test['n_test_images']} images, never used for training or model selection):\n\n"
+            "| Metric | Value |\n|---|---|\n"
+            f"| Reef IoU (reefs & invertebrates) | **{coral_test['reef_iou']:.3f}** (gate {coral_test['gate_reef_iou']}) |\n"
+            f"| Reef precision / recall | {coral_test['reef_precision']:.3f} / {coral_test['reef_recall']:.3f} |\n"
+            f"| Mean IoU (8 classes) | {coral_test['mean_iou']:.3f} |\n"
+            f"| Pixel accuracy | {coral_test['pixel_accuracy']:.3f} |\n\n"
+            + (
+                f"**Domain check on deep-sea footage:** on the {coral_domain['n_frames']} TrashCan test frames (no reef), the U-Net "
+                f"alone marked {coral_domain['frames_reef_ge_2pct_unet_only']} frames as >=2% reef (mud, sediment and rock). "
+                "It is therefore only trusted together with the colour/texture coral check in auto mode, which reduces this to "
+                f"{coral_domain['frames_coral_declared_auto_mode_unet_AND_colour_check']} frames."
+                if coral_domain else ""
+            )
+        )
+    else:
+        coral_status = "NOT ASSESSED for TrashCan (deep-sea ROV footage, no reef). For other photos: colour/texture heuristic with a coral-presence check"
+        coral_section = "No trained coral model found in models/coral_segmenter/; the colour/texture heuristic is used."
+
     fit_report = getattr(impact_engine, "fit_report", None) or (
         json.loads((PROJECT_ROOT / "models" / "impact_model" / "fit_report.json").read_text())
         if (PROJECT_ROOT / "models" / "impact_model" / "fit_report.json").exists() else {}
@@ -432,7 +462,7 @@ def run_complete_assessment(sample_limit: int = 40):
         "plastic_detection": "REAL - YOLO11-seg trained on TrashCan 1.0, run on real test images",
         "plastic_detector_quality": "Weak - trash_plastic precision ~0.37, recall ~0.31 on leak-free images (see HANDOFF.md)",
         "fish_behavior": "REAL, SMALL SAMPLE - ByteTrack over test video frames with camera-motion compensation; few mobile animals are tracked, so plastic-related behaviour change cannot be concluded",
-        "coral_health": "NOT ASSESSED for TrashCan (deep-sea ROV footage, no reef). For other photos: colour/texture heuristic with a coral-presence check; a trained SUIM coral model is pending",
+        "coral_health": coral_status,
         "water_temperature_and_bleaching_alert": "REAL - NOAA Coral Reef Watch 5km daily satellite SST, Degree Heating Weeks and Bleaching Alert Area at each station",
         "ph_oxygen_salinity_turbidity": copernicus_status,
         "station_assignment": "ASSUMED - TrashCan images have no geotags, so images are assigned to stations in rotation",
@@ -460,6 +490,8 @@ def run_complete_assessment(sample_limit: int = 40):
             "percentage_at_high_or_critical_risk": round((high_risk_count / total_transects) * 100.0, 1),
         },
         "fish_tracking": tracking_summary,
+        "coral_segmenter_suim_test": coral_test,
+        "coral_segmenter_deep_sea_domain_check": coral_domain,
         "shap_mean_abs_contribution": shap_summary["mean_abs_shap"].to_dict(),
         "gradcam_heat_inside_plastic_boxes": {
             "frames": len(gradcam_scores),
@@ -491,7 +523,7 @@ def run_complete_assessment(sample_limit: int = 40):
 **Evaluation Scope**: {total_transects} TrashCan 1.0 test images ({gt_plastic_images} with labelled plastic, {total_transects - gt_plastic_images} without)
 **Core Objective**: Detect underwater plastic waste, track fish behavioral changes, evaluate coral bleaching, integrate water quality telemetry, and forecast ecological biodiversity loss.
 
-> **Read this first.** Real: plastic detection, Grad-CAM, fish tracking, NOAA satellite sea temperature and
+> **Read this first.** Real: plastic detection, Grad-CAM, fish tracking, SUIM reef segmentation, NOAA satellite SST and
 > bleaching alerts. Assumed: the image-to-station assignment (TrashCan has no geotags), pH / oxygen / salinity /
 > turbidity unless Copernicus is configured, and the expert formula behind the impact score and biodiversity
 > loss (Section 2, item 5). Treat the scores as a demonstration of the pipeline, not as ecological findings.
@@ -515,7 +547,7 @@ def run_complete_assessment(sample_limit: int = 40):
 
 1. **Plastic detection & segmentation**: YOLO11-seg trained on TrashCan 1.0; coverage % from real pixel masks.
 2. **Fish detection & tracking**: the same detector + ByteTrack across consecutive video frames, with ROV camera motion removed by phase correlation; speed, turning and distance to plastic per track.
-3. **Coral health**: skipped for deep-sea TrashCan frames; for other photos a colour/texture heuristic with a coral-presence check.
+3. **Coral health**: U-Net reef segmentation trained on SUIM (see Section 4) plus a colour rule for bleaching inside the reef area; skipped for deep-sea TrashCan frames.
 4. **Water quality**: Water Quality Index from temperature (NOAA CRW satellite), pH, dissolved oxygen, salinity and turbidity.
 5. **Impact fusion**: XGBoost regressors predict the MPIS (0–100) and biodiversity loss % (expert-formula targets; held-out R² {fit_report.get('mpis_r2', 'n/a')} for MPIS).
 6. **Explainability**: SHAP TreeExplainer attributions for every transect, and Grad-CAM on the detector.
@@ -528,7 +560,11 @@ def run_complete_assessment(sample_limit: int = 40):
 
 {tracking_text}
 
-## 4. Survey Stations (NOAA Coral Reef Watch, real satellite data)
+## 4. Coral Reef Segmentation Model
+
+{coral_section}
+
+## 5. Survey Stations (NOAA Coral Reef Watch, real satellite data)
 
 | Station | SST (°C) | DHW (°C-weeks) | Bleaching alert | Images assigned | Mean MPIS |
 |---|---|---|---|---|---|
@@ -536,7 +572,7 @@ def run_complete_assessment(sample_limit: int = 40):
 
 ---
 
-## 5. SHAP Attribution Summary (computed over all {total_transects} transects)
+## 6. SHAP Attribution Summary (computed over all {total_transects} transects)
 
 Most influential feature on average: **`{top_feature}`**. SHAP values are relative to the model's
 average synthetic site, so a feature "lowers" the score when these images have less of it than that
@@ -548,7 +584,7 @@ average (e.g. most images have little or no plastic).
 
 ---
 
-## 6. Data Provenance
+## 7. Data Provenance
 
 | Component | Status |
 |---|---|
@@ -556,7 +592,7 @@ average (e.g. most images have little or no plastic).
 
 ---
 
-## 7. Standard Decision-Support Recommendations
+## 8. Standard Decision-Support Recommendations
 
 Rule-based guidance templates, triggered by score thresholds:
 

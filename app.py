@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 from pathlib import Path
 
 import cv2
@@ -22,6 +23,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
+# Keep runtime settings in a writable project directory.
+os.environ['YOLO_CONFIG_DIR'] = str(Path(__file__).resolve().parent / 'outputs' / 'ultralytics_config')
 from ultralytics import YOLO
 
 from src.config import BEST_MODEL_PATH, CLASS_NAMES, FIGURES_DIR, METRICS_DIR, PREDICTIONS_DIR, PROJECT_ROOT, plastic_conf_threshold
@@ -150,37 +153,50 @@ def get_curated_images():
 
 
 PAGE_INFO = {
-    "🔬 Analyse an Image": (
+    "🔬 Start here: Analyse an Image": (
         "Runs every model on one underwater image: plastic detection, fish detection, coral health and the impact score.",
-        "Pick a survey frame or upload your own photo (for reef photos set the habitat). Results also feed the Coral and "
-        "Explanations pages.",
+        "Pick a survey frame or upload your own photo (for reef photos set the habitat). The result feeds pages 3-6.",
         "Plastic, fish and coral come from trained models. The impact score and biodiversity loss are an expert formula "
         "(estimates, not measurements).",
     ),
-    "🗺️ Station Map": (
-        "Five survey stations on a map with real NOAA satellite sea temperature and bleaching alerts, plus a world map "
-        "of ocean microplastics vs recorded species.",
+    "1. 🗺️ Plastic Pollution Maps": (
+        "Maps plastic found by the detector at five survey stations, with real NOAA satellite sea temperature and "
+        "bleaching alerts for each station.",
         "Filter stations by impact level; hover over points for details.",
         "Station sea temperature and alerts are real satellite data. Survey images are assigned to stations by rotation "
-        "(they have no GPS). The world map shows an association, not cause.",
+        "(they have no GPS).",
     ),
-    "🐟 Fish Tracking": (
+    "2. 🐟 Fish Behaviour Analysis": (
         "Follows fish and other animals across the frames of a survey video and measures speed, turning and distance "
         "to plastic.",
         "Pick a video, then move the frame slider.",
         "Real tracking on test videos, but few fish are detected, so it cannot show whether plastic changes behaviour.",
     ),
-    "🪸 Coral Health": (
+    "3. 🪸 Coral Health Assessment": (
         "Shows live, bleached and dead coral for the last analysed image, with coral cover and a bleaching level.",
         "Analyse a reef photo on the first page first (samples are in data/samples/reef/).",
         "{coral_note}",
     ),
-    "🧠 Explanations & Actions": (
-        "Explains which factors pushed the impact score up or down for the last analysed image, and lists suggested "
-        "actions.",
+    "6. 🧭 Decision Support": (
+        "Explains which factors pushed the impact score up or down for the last analysed image (SHAP), and lists "
+        "suggested actions for managers.",
         "Analyse an image on the first page first.",
         "Explains the impact-score model, which follows an expert formula, so it shows what that model learned rather "
         "than proven ecology.",
+    ),
+    "4. 📊 Marine Pollution Impact Score": (
+        "The Marine Pollution Impact Score (0-100) for the last analysed image, what went into it, and the scores of all "
+        "survey images.",
+        "Analyse an image on the first page first; the survey overview below works without it.",
+        "An expert formula combining plastic, fish, coral and water quality, reproduced by an XGBoost model (estimate, "
+        "not a measurement).",
+    ),
+    "5. 📉 Biodiversity Loss Prediction": (
+        "Predicted biodiversity loss for the last analysed image and the survey, plus a real-data check: do ocean "
+        "microplastics go with fewer recorded species?",
+        "Analyse an image on the first page first; the survey overview and world map work without it.",
+        "The loss % is an estimate from the expert formula. The world map uses real NOAA and OBIS data and shows an "
+        "association, not proof of cause.",
     ),
     "📑 Data & Report": (
         "The table of all analysed survey images and the full written assessment report.",
@@ -210,13 +226,15 @@ st.sidebar.header("MARIS")
 
 # Navigation
 page = st.sidebar.radio(
-    "Pages",
+    "Pages (expected outcomes 1-6)",
     [
-        "🔬 Analyse an Image",
-        "🗺️ Station Map",
-        "🐟 Fish Tracking",
-        "🪸 Coral Health",
-        "🧠 Explanations & Actions",
+        "🔬 Start here: Analyse an Image",
+        "1. 🗺️ Plastic Pollution Maps",
+        "2. 🐟 Fish Behaviour Analysis",
+        "3. 🪸 Coral Health Assessment",
+        "4. 📊 Marine Pollution Impact Score",
+        "5. 📉 Biodiversity Loss Prediction",
+        "6. 🧭 Decision Support",
         "📑 Data & Report",
     ],
 )
@@ -258,8 +276,8 @@ else:
 # ==============================================================================
 # TAB 1: MULTI-MODAL DIAGNOSTIC STUDIO
 # ==============================================================================
-if page == "🔬 Analyse an Image":
-    st.subheader("Analyse an Image")
+if page == "🔬 Start here: Analyse an Image":
+    st.subheader("Start here: Analyse an Image")
     page_intro(page)
 
     col_input1, col_input2 = st.columns([2, 1])
@@ -366,17 +384,6 @@ if page == "🔬 Analyse an Image":
         mpis = impact_prediction["marine_pollution_impact_score"]
         biodiv_loss = impact_prediction["predicted_biodiversity_loss_pct"]
 
-        # Results KPI Metrics Banner
-        st.markdown("---")
-        m1, m2, m3, m4, m5 = st.columns(5)
-        m1.metric("Marine Pollution Impact", f"{mpis:.1f} / 100", delta=impact_prediction["urgency"][:15], delta_color="inverse")
-        m2.metric("Predicted Biodiversity Loss", f"{biodiv_loss:.1f}%", delta="Species Richness Drop", delta_color="inverse")
-        m3.metric("Plastic Debris Count", plastic_stats["plastic_count"], f"{plastic_stats['plastic_coverage_percentage']:.2f}% Cover")
-        if fish_stats.get("measurement", "").startswith("single image"):
-            m4.metric("Animals detected", len(fish_detections), "behaviour needs video", delta_color="off")
-        else:
-            m4.metric("Fish Anomaly Index (BAI)", f"{fish_stats['behavioral_anomaly_index']:.1f}%", fish_stats["behavior_state"][:18])
-        m5.metric("Coral Bleaching (BSI)", f"{coral_stats['bleaching_severity_index']:.1f}%", coral_stats["noaa_alert_level"])
         st.caption(f"Plastic: {plastic_summary(short=True)}; counts are a lower bound. Impact and biodiversity loss are estimates.")
 
         # Keep this diagnostic so the Fish / Coral / XAI pages can show it instead of example values
@@ -448,8 +455,8 @@ if page == "🔬 Analyse an Image":
 # ==============================================================================
 # TAB 2: GEOSPATIAL MAPS
 # ==============================================================================
-elif page == "🗺️ Station Map":
-    st.subheader("Station Map")
+elif page == "1. 🗺️ Plastic Pollution Maps":
+    st.subheader("1. Plastic Pollution Maps")
     page_intro(page)
 
     assessment_csv = PREDICTIONS_DIR / "marine_biodiversity_assessment.csv"
@@ -469,39 +476,12 @@ elif page == "🗺️ Station Map":
     st.markdown("#### 📋 Survey Station Records")
     st.dataframe(filtered_df, width="stretch")
 
-    st.markdown("---")
-    st.markdown("#### 🌍 Real-world evidence: ocean microplastics vs. recorded species")
-    obs_metrics = PROJECT_ROOT / "models" / "impact_model" / "observational" / "metrics.json"
-    obs_cells = PROJECT_ROOT / "data" / "external" / "real_impact_cells.csv"
-    if obs_metrics.exists() and obs_cells.exists():
-        om = json.loads(obs_metrics.read_text())
-        cells = pd.read_csv(obs_cells).dropna(subset=["log10_species"])
-        st.caption(f"{om['n_microplastic_samples']} NOAA microplastic samples in {om['n_cells']} ocean cells vs OBIS species counts.")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Held-out R² (spatial CV)", om["r2_all_features"])
-        c2.metric("R² without microplastics", om["r2_without_microplastics"])
-        c3.metric("Gain from microplastics", f"{om['microplastics_r2_gain']:+.3f}")
-        import plotly.express as px
-        fig_obs = px.scatter_geo(
-            cells, lat="lat_center", lon="lon_center", color="log10_microplastics",
-            size=cells["obis_species"].clip(lower=1) ** 0.5, color_continuous_scale="Viridis",
-            hover_data={"microplastics_median_m3": ":.3f", "obis_species": True, "obis_records": True,
-                        "n_samples": True, "lat_center": False, "lon_center": False},
-            labels={"log10_microplastics": "log10 pieces/m³"}, projection="natural earth",
-            title="Microplastic concentration (colour) and recorded species (size) per 2° cell",
-        )
-        fig_obs.update_layout(height=480, margin=dict(l=10, r=10, t=50, b=10))
-        st.plotly_chart(fig_obs, width="stretch")
-        shap_df = pd.DataFrame(sorted(om["mean_abs_shap"].items(), key=lambda kv: kv[1]), columns=["feature", "mean |SHAP|"])
-        st.bar_chart(shap_df.set_index("feature"), horizontal=True)
-    else:
-        st.info("Run `python -m src.modules.real_impact_data --refresh` to build the real-data model.")
 
 # ==============================================================================
 # TAB 3: FISH BEHAVIOR LAB
 # ==============================================================================
-elif page == "🐟 Fish Tracking":
-    st.subheader("Fish Tracking")
+elif page == "2. 🐟 Fish Behaviour Analysis":
+    st.subheader("2. Fish Behaviour Analysis")
     page_intro(page)
 
     videos = get_test_videos()
@@ -551,8 +531,8 @@ elif page == "🐟 Fish Tracking":
 # ==============================================================================
 # TAB 4: CORAL REEF HEALTH STUDIO
 # ==============================================================================
-elif page == "🪸 Coral Health":
-    st.subheader("Coral Health")
+elif page == "3. 🪸 Coral Health Assessment":
+    st.subheader("3. Coral Health Assessment")
     seg = coral_analyzer.segmenter
     if seg is not None and seg.learns_bleaching:
         tm = seg.test_metrics
@@ -580,18 +560,105 @@ elif page == "🪸 Coral Health":
         if last is not None:
             st.pyplot(plot_coral_health_summary(last["coral_stats"]))
         else:
-            st.info("Run an image in the 🔬 Analyse an Image first. Its coral results will show here.")
+            st.info("Run an image in the 🔬 Start here: Analyse an Image first. Its coral results will show here.")
+
+# ==============================================================================
+# OUTCOME 4: MARINE POLLUTION IMPACT SCORE
+# ==============================================================================
+elif page == "4. 📊 Marine Pollution Impact Score":
+    st.subheader("4. Marine Pollution Impact Score")
+    page_intro(page)
+    last = st.session_state.get("last_diagnostic")
+    if last is not None:
+        ip = impact_engine.predict(last["plastic_stats"], last["fish_stats"], last["coral_stats"], wq_stats)
+        c1, c2 = st.columns([1, 1])
+        with c1:
+            st.pyplot(plot_impact_score_gauge(ip["marine_pollution_impact_score"], ip["risk_tier"]))
+        with c2:
+            st.metric("Impact score", f"{ip['marine_pollution_impact_score']:.1f} / 100")
+            st.markdown(f"**Level:** {ip['risk_tier']}  \n**Suggested response:** {ip['urgency']}")
+            st.markdown("**Inputs used**")
+            st.dataframe(pd.DataFrame({
+                "input": ["Plastic items", "Plastic cover (%)", "Coral bleaching (0-100)", "Coral cover (%)",
+                          "Water quality index", "Water temperature (°C)"],
+                "value": [last["plastic_stats"]["plastic_count"], round(last["plastic_stats"]["plastic_coverage_percentage"], 2),
+                          last["coral_stats"]["bleaching_severity_index"], last["coral_stats"]["coral_cover_percentage"],
+                          wq_stats["water_quality_index"], temp],
+            }), hide_index=True, width="stretch")
+    else:
+        st.info("Analyse an image on the '🔬 Start here: Analyse an Image' page to see its score here.")
+    st.markdown("#### Scores of all survey images")
+    csv_path = PREDICTIONS_DIR / "marine_biodiversity_assessment.csv"
+    if csv_path.exists():
+        df_s = pd.read_csv(csv_path)
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Survey images", len(df_s))
+        c2.metric("Mean score", f"{df_s['marine_pollution_impact_score'].mean():.1f} / 100")
+        c3.metric("High or critical (≥ 50)", int((df_s["marine_pollution_impact_score"] >= 50).sum()))
+        st.bar_chart(df_s["marine_pollution_impact_score"].round(0).value_counts().sort_index(), x_label="impact score", y_label="images")
+        st.caption("Levels: Low < 25, Moderate < 50, High < 75, Critical ≥ 75.")
+
+# ==============================================================================
+# OUTCOME 5: BIODIVERSITY LOSS PREDICTION
+# ==============================================================================
+elif page == "5. 📉 Biodiversity Loss Prediction":
+    st.subheader("5. Biodiversity Loss Prediction")
+    page_intro(page)
+    last = st.session_state.get("last_diagnostic")
+    if last is not None:
+        ip = impact_engine.predict(last["plastic_stats"], last["fish_stats"], last["coral_stats"], wq_stats)
+        c1, c2 = st.columns(2)
+        c1.metric("Predicted biodiversity loss (last image)", f"{ip['predicted_biodiversity_loss_pct']:.1f}%")
+        if "predicted_biomass_decline_pct" in ip:
+            c2.metric("Predicted fish biomass decline", f"{ip['predicted_biomass_decline_pct']:.1f}%")
+    else:
+        st.info("Analyse an image on the '🔬 Start here: Analyse an Image' page to see its prediction here.")
+    csv_path = PREDICTIONS_DIR / "marine_biodiversity_assessment.csv"
+    if csv_path.exists():
+        df_b = pd.read_csv(csv_path)
+        st.markdown("#### Survey images")
+        c1, c2 = st.columns(2)
+        c1.metric("Mean predicted loss", f"{df_b['predicted_biodiversity_loss_pct'].mean():.1f}%")
+        c2.metric("Highest predicted loss", f"{df_b['predicted_biodiversity_loss_pct'].max():.1f}%")
+        st.scatter_chart(df_b, x="plastic_coverage_percentage", y="predicted_biodiversity_loss_pct",
+                         x_label="plastic cover (%)", y_label="predicted biodiversity loss (%)")
+    st.markdown("#### 🌍 Real-world check: ocean microplastics vs. recorded species")
+    obs_metrics = PROJECT_ROOT / "models" / "impact_model" / "observational" / "metrics.json"
+    obs_cells = PROJECT_ROOT / "data" / "external" / "real_impact_cells.csv"
+    if obs_metrics.exists() and obs_cells.exists():
+        om = json.loads(obs_metrics.read_text())
+        cells = pd.read_csv(obs_cells).dropna(subset=["log10_species"])
+        st.caption(f"{om['n_microplastic_samples']} NOAA microplastic samples in {om['n_cells']} ocean cells vs OBIS species counts.")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Held-out R² (spatial CV)", om["r2_all_features"])
+        c2.metric("R² without microplastics", om["r2_without_microplastics"])
+        c3.metric("Gain from microplastics", f"{om['microplastics_r2_gain']:+.3f}")
+        import plotly.express as px
+        fig_obs = px.scatter_geo(
+            cells, lat="lat_center", lon="lon_center", color="log10_microplastics",
+            size=cells["obis_species"].clip(lower=1) ** 0.5, color_continuous_scale="Viridis",
+            hover_data={"microplastics_median_m3": ":.3f", "obis_species": True, "obis_records": True,
+                        "n_samples": True, "lat_center": False, "lon_center": False},
+            labels={"log10_microplastics": "log10 pieces/m³"}, projection="natural earth",
+            title="Microplastic concentration (colour) and recorded species (size) per 2° cell",
+        )
+        fig_obs.update_layout(height=480, margin=dict(l=10, r=10, t=50, b=10))
+        st.plotly_chart(fig_obs, width="stretch")
+        shap_df = pd.DataFrame(sorted(om["mean_abs_shap"].items(), key=lambda kv: kv[1]), columns=["feature", "mean |SHAP|"])
+        st.bar_chart(shap_df.set_index("feature"), horizontal=True)
+    else:
+        st.info("Run `python -m src.modules.real_impact_data --refresh` to build the real-data model.")
 
 # ==============================================================================
 # TAB 5: EXPLAINABLE AI & POLICY ADVISOR
 # ==============================================================================
-elif page == "🧠 Explanations & Actions":
-    st.subheader("Explanations & Actions")
+elif page == "6. 🧭 Decision Support":
+    st.subheader("6. Decision Support")
     page_intro(page)
     last = st.session_state.get("last_diagnostic")
 
     if last is None:
-        st.info("Run an image in the 🔬 Analyse an Image first. Its SHAP explanation and recommendations will show here.")
+        st.info("Run an image in the 🔬 Start here: Analyse an Image first. Its SHAP explanation and recommendations will show here.")
         st.stop()
 
     # SHAP for the current diagnostic (water quality re-read from the sidebar)
@@ -653,3 +720,6 @@ elif page == "📑 Data & Report":
             file_name="executive_impact_report.md",
             mime="text/markdown",
         )
+
+
+

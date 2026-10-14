@@ -1,0 +1,78 @@
+{
+  "backend": "hf_segformer",
+  "hf_dir": "coralscapes_segformer_v2",
+  "source": "EPFL-ECEO/segformer-b2-finetuned-coralscapes-1024-1024",
+  "model": "v2 fine-tuned",
+  "classes": [
+    "other",
+    "live_coral",
+    "bleached_coral",
+    "dead_coral"
+  ],
+  "group_of_channel": [
+    null,
+    0,
+    0,
+    3,
+    2,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    2,
+    1,
+    0,
+    2,
+    3,
+    1,
+    1,
+    3,
+    0,
+    1,
+    0,
+    1,
+    1,
+    0,
+    0,
+    1,
+    3,
+    2,
+    1,
+    0,
+    1,
+    3,
+    0,
+    0
+  ],
+  "reef_classes": [
+    1,
+    2,
+    3
+  ],
+  "live_class": 1,
+  "bleached_class": 2,
+  "dead_class": 3,
+  "input_hw": [
+    1024,
+    2048
+  ],
+  "mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "tta_flip": true,
+  "dataset": "Coralscapes"
+}

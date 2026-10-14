@@ -1,0 +1,184 @@
+{
+  "model": "v2 fine-tuned",
+  "split": "test",
+  "pixel_accuracy": 0.943,
+  "mean_iou": 0.6925,
+  "per_class_iou": {
+    "other": 0.9425,
+    "live_coral": 0.806,
+    "bleached_coral": 0.6938,
+    "dead_coral": 0.3277
+  },
+  "coral_iou": 0.7668,
+  "coral_precision": 0.8759,
+  "coral_recall": 0.8603,
+  "coral_vs_rest_pixel_accuracy": 0.9517,
+  "image_level_coral_present": {
+    "accuracy": 0.9541,
+    "precision": 0.9752,
+    "recall": 0.9691,
+    "n_positive": 324,
+    "n_images": 392,
+    "always_majority_baseline": 0.8265
+  },
+  "image_level_bleaching_present": {
+    "accuracy": 0.9566,
+    "precision": 0.8472,
+    "recall": 0.9104,
+    "n_positive": 67,
+    "n_images": 392,
+    "always_majority_baseline": 0.8291
+  },
+  "dataset": "Coralscapes TEST (official spatial split, 5 unseen dive sites)",
+  "chosen_on": "val coral_iou",
+  "eval_hw": [
+    1024,
+    2048
+  ],
+  "tta_flip": true,
+  "n_test_images": 392,
+  "classes": [
+    "other",
+    "live_coral",
+    "bleached_coral",
+    "dead_coral"
+  ],
+  "gate_coral_iou": 0.5,
+  "passed_gate": true,
+  "reef_iou": 0.7668,
+  "reef_precision": 0.8759,
+  "reef_recall": 0.8603,
+  "all_candidates_test": {
+    "published (no fine-tune)": {
+      "model": "published (no fine-tune)",
+      "split": "test",
+      "pixel_accuracy": 0.9443,
+      "mean_iou": 0.6884,
+      "per_class_iou": {
+        "other": 0.944,
+        "live_coral": 0.8055,
+        "bleached_coral": 0.6946,
+        "dead_coral": 0.3094
+      },
+      "coral_iou": 0.7683,
+      "coral_precision": 0.8918,
+      "coral_recall": 0.8473,
+      "coral_vs_rest_pixel_accuracy": 0.9528,
+      "image_level_coral_present": {
+        "accuracy": 0.9566,
+        "precision": 0.9812,
+        "recall": 0.966,
+        "n_positive": 324,
+        "n_images": 392,
+        "always_majority_baseline": 0.8265
+      },
+      "image_level_bleaching_present": {
+        "accuracy": 0.9515,
+        "precision": 0.875,
+        "recall": 0.8358,
+        "n_positive": 67,
+        "n_images": 392,
+        "always_majority_baseline": 0.8291
+      }
+    },
+    "v2 fine-tuned": {
+      "model": "v2 fine-tuned",
+      "split": "test",
+      "pixel_accuracy": 0.943,
+      "mean_iou": 0.6925,
+      "per_class_iou": {
+        "other": 0.9425,
+        "live_coral": 0.806,
+        "bleached_coral": 0.6938,
+        "dead_coral": 0.3277
+      },
+      "coral_iou": 0.7668,
+      "coral_precision": 0.8759,
+      "coral_recall": 0.8603,
+      "coral_vs_rest_pixel_accuracy": 0.9517,
+      "image_level_coral_present": {
+        "accuracy": 0.9541,
+        "precision": 0.9752,
+        "recall": 0.9691,
+        "n_positive": 324,
+        "n_images": 392,
+        "always_majority_baseline": 0.8265
+      },
+      "image_level_bleaching_present": {
+        "accuracy": 0.9566,
+        "precision": 0.8472,
+        "recall": 0.9104,
+        "n_positive": 67,
+        "n_images": 392,
+        "always_majority_baseline": 0.8291
+      }
+    }
+  },
+  "all_candidates_val": {
+    "published (no fine-tune)": {
+      "model": "published (no fine-tune)",
+      "split": "val",
+      "pixel_accuracy": 0.9835,
+      "mean_iou": 0.9233,
+      "per_class_iou": {
+        "other": 0.9834,
+        "live_coral": 0.9337,
+        "bleached_coral": 0.8822,
+        "dead_coral": 0.8942
+      },
+      "coral_iou": 0.9448,
+      "coral_precision": 0.9692,
+      "coral_recall": 0.974,
+      "coral_vs_rest_pixel_accuracy": 0.987,
+      "image_level_coral_present": {
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "n_positive": 149,
+        "n_images": 166,
+        "always_majority_baseline": 0.8976
+      },
+      "image_level_bleaching_present": {
+        "accuracy": 0.994,
+        "precision": 1.0,
+        "recall": 0.9677,
+        "n_positive": 31,
+        "n_images": 166,
+        "always_majority_baseline": 0.8133
+      }
+    },
+    "v2 fine-tuned": {
+      "model": "v2 fine-tuned",
+      "split": "val",
+      "pixel_accuracy": 0.9829,
+      "mean_iou": 0.917,
+      "per_class_iou": {
+        "other": 0.9834,
+        "live_coral": 0.93,
+        "bleached_coral": 0.8631,
+        "dead_coral": 0.8914
+      },
+      "coral_iou": 0.9453,
+      "coral_precision": 0.963,
+      "coral_recall": 0.9809,
+      "coral_vs_rest_pixel_accuracy": 0.9871,
+      "image_level_coral_present": {
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "n_positive": 149,
+        "n_images": 166,
+        "always_majority_baseline": 0.8976
+      },
+      "image_level_bleaching_present": {
+        "accuracy": 0.994,
+        "precision": 1.0,
+        "recall": 0.9677,
+        "n_positive": 31,
+        "n_images": 166,
+        "always_majority_baseline": 0.8133
+      }
+    }
+  },
+  "note": "Grouped 4-class task; not comparable to the paper 39-class mIoU."
+}

@@ -267,7 +267,7 @@ if page == "🔬 Multi-Modal Diagnostic Studio":
                     "Habitat of this photo",
                     ["Auto-detect coral", "Coral reef", "Not a reef"],
                     horizontal=True,
-                    help="Auto uses a colour/texture check for coral before scoring bleaching.",
+                    help="Coral reef: always score coral health. Auto: the coral model decides if it passed its deep-sea false-positive check, otherwise a colour/texture check must agree. Not a reef: skip.",
                 )
                 file_bytes = np.frombuffer(uploaded.read(), np.uint8)
                 img_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
@@ -533,12 +533,21 @@ elif page == "🐟 Fish Behavior & Movement Tracking":
 elif page == "🪸 Coral Reef Health & Bleaching Diagnostic":
     st.subheader("Coral Reef Health Assessment & Bleaching Severity")
     seg = coral_analyzer.segmenter
-    if seg is not None:
+    if seg is not None and seg.learns_bleaching:
         tm = seg.test_metrics
         st.caption(
-            f"Reef area from a U-Net trained on SUIM (official TEST split: reef IoU {tm['reef_iou']:.3f}, precision "
+            f"Live, bleached and dead coral are predicted by a {seg.name} model trained on Coralscapes (expert-labelled "
+            f"Red Sea reefs; official TEST split of 5 unseen dive sites: coral IoU {tm['coral_iou']:.3f}, bleached-coral IoU "
+            f"{tm['per_class_iou']['bleached_coral']:.3f}). Bleaching comes from the model, not a colour rule. "
+            "TrashCan frames are deep-sea footage and show 'No coral detected'. "
+            "Upload a reef photo in the Diagnostic Studio (habitat 'Coral reef' or 'Auto') to try it."
+        )
+    elif seg is not None:
+        tm = seg.test_metrics
+        st.caption(
+            f"Reef area from a {seg.name} model trained on SUIM (official TEST split: reef IoU {tm['reef_iou']:.3f}, precision "
             f"{tm['reef_precision']:.2f}, recall {tm['reef_recall']:.2f}). SUIM has no bleaching labels, so bleaching is "
-            "a colour rule applied only inside the predicted reef area. The U-Net is out of domain on deep-sea footage, "
+            "a colour rule applied only inside the predicted reef area. The segmenter is out of domain on deep-sea footage, "
             "so in auto mode it must agree with a colour/texture coral check; TrashCan frames show 'No coral detected'. "
             "Upload a reef photo in the Diagnostic Studio (habitat 'Coral reef' or 'Auto') to try it."
         )
@@ -553,7 +562,7 @@ elif page == "🪸 Coral Reef Health & Bleaching Diagnostic":
     with col1:
         if last is not None:
             coral_viz = draw_coral_health_overlay(last["image_bgr"], last["coral_stats"])
-            st.image(cv2.cvtColor(coral_viz, cv2.COLOR_BGR2RGB), caption="Coral heuristic on the Diagnostic Studio image", width="stretch")
+            st.image(cv2.cvtColor(coral_viz, cv2.COLOR_BGR2RGB), caption=f"Coral analysis on the Diagnostic Studio image ({last['coral_stats']['method']})", width="stretch")
         else:
             coral_sample = (FIGURES_DIR / "coral_health_assessment.png")
             if coral_sample.exists():

@@ -159,40 +159,198 @@
     "median_speed_away_from_plastic": 10.27
   },
   "coral_segmenter_suim_test": {
-    "dataset": "SUIM TEST (official split)",
-    "model": "U-Net resnet34",
-    "input_hw": [
-      320,
-      480
-    ],
-    "n_test_images": 110,
-    "pixel_accuracy": 0.8538,
-    "mean_iou": 0.6836,
+    "model": "v2 fine-tuned",
+    "split": "test",
+    "pixel_accuracy": 0.943,
+    "mean_iou": 0.6925,
     "per_class_iou": {
-      "water": 0.8812,
-      "divers": 0.8241,
-      "plants_seagrass": 0.3091,
-      "wrecks": 0.6585,
-      "robots": 0.7068,
-      "reef_invertebrates": 0.6843,
-      "fish_vertebrates": 0.7713,
-      "seafloor_rocks": 0.6332
+      "other": 0.9425,
+      "live_coral": 0.806,
+      "bleached_coral": 0.6938,
+      "dead_coral": 0.3277
     },
-    "reef_iou": 0.6843,
-    "reef_precision": 0.762,
-    "reef_recall": 0.8703,
-    "gate_reef_iou": 0.5,
-    "passed_gate": true
+    "coral_iou": 0.7668,
+    "coral_precision": 0.8759,
+    "coral_recall": 0.8603,
+    "coral_vs_rest_pixel_accuracy": 0.9517,
+    "image_level_coral_present": {
+      "accuracy": 0.9541,
+      "precision": 0.9752,
+      "recall": 0.9691,
+      "n_positive": 324,
+      "n_images": 392,
+      "always_majority_baseline": 0.8265
+    },
+    "image_level_bleaching_present": {
+      "accuracy": 0.9566,
+      "precision": 0.8472,
+      "recall": 0.9104,
+      "n_positive": 67,
+      "n_images": 392,
+      "always_majority_baseline": 0.8291
+    },
+    "dataset": "Coralscapes TEST (official spatial split, 5 unseen dive sites)",
+    "chosen_on": "val coral_iou",
+    "eval_hw": [
+      1024,
+      2048
+    ],
+    "tta_flip": true,
+    "n_test_images": 392,
+    "classes": [
+      "other",
+      "live_coral",
+      "bleached_coral",
+      "dead_coral"
+    ],
+    "gate_coral_iou": 0.5,
+    "passed_gate": true,
+    "reef_iou": 0.7668,
+    "reef_precision": 0.8759,
+    "reef_recall": 0.8603,
+    "all_candidates_test": {
+      "published (no fine-tune)": {
+        "model": "published (no fine-tune)",
+        "split": "test",
+        "pixel_accuracy": 0.9443,
+        "mean_iou": 0.6884,
+        "per_class_iou": {
+          "other": 0.944,
+          "live_coral": 0.8055,
+          "bleached_coral": 0.6946,
+          "dead_coral": 0.3094
+        },
+        "coral_iou": 0.7683,
+        "coral_precision": 0.8918,
+        "coral_recall": 0.8473,
+        "coral_vs_rest_pixel_accuracy": 0.9528,
+        "image_level_coral_present": {
+          "accuracy": 0.9566,
+          "precision": 0.9812,
+          "recall": 0.966,
+          "n_positive": 324,
+          "n_images": 392,
+          "always_majority_baseline": 0.8265
+        },
+        "image_level_bleaching_present": {
+          "accuracy": 0.9515,
+          "precision": 0.875,
+          "recall": 0.8358,
+          "n_positive": 67,
+          "n_images": 392,
+          "always_majority_baseline": 0.8291
+        }
+      },
+      "v2 fine-tuned": {
+        "model": "v2 fine-tuned",
+        "split": "test",
+        "pixel_accuracy": 0.943,
+        "mean_iou": 0.6925,
+        "per_class_iou": {
+          "other": 0.9425,
+          "live_coral": 0.806,
+          "bleached_coral": 0.6938,
+          "dead_coral": 0.3277
+        },
+        "coral_iou": 0.7668,
+        "coral_precision": 0.8759,
+        "coral_recall": 0.8603,
+        "coral_vs_rest_pixel_accuracy": 0.9517,
+        "image_level_coral_present": {
+          "accuracy": 0.9541,
+          "precision": 0.9752,
+          "recall": 0.9691,
+          "n_positive": 324,
+          "n_images": 392,
+          "always_majority_baseline": 0.8265
+        },
+        "image_level_bleaching_present": {
+          "accuracy": 0.9566,
+          "precision": 0.8472,
+          "recall": 0.9104,
+          "n_positive": 67,
+          "n_images": 392,
+          "always_majority_baseline": 0.8291
+        }
+      }
+    },
+    "all_candidates_val": {
+      "published (no fine-tune)": {
+        "model": "published (no fine-tune)",
+        "split": "val",
+        "pixel_accuracy": 0.9835,
+        "mean_iou": 0.9233,
+        "per_class_iou": {
+          "other": 0.9834,
+          "live_coral": 0.9337,
+          "bleached_coral": 0.8822,
+          "dead_coral": 0.8942
+        },
+        "coral_iou": 0.9448,
+        "coral_precision": 0.9692,
+        "coral_recall": 0.974,
+        "coral_vs_rest_pixel_accuracy": 0.987,
+        "image_level_coral_present": {
+          "accuracy": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n_positive": 149,
+          "n_images": 166,
+          "always_majority_baseline": 0.8976
+        },
+        "image_level_bleaching_present": {
+          "accuracy": 0.994,
+          "precision": 1.0,
+          "recall": 0.9677,
+          "n_positive": 31,
+          "n_images": 166,
+          "always_majority_baseline": 0.8133
+        }
+      },
+      "v2 fine-tuned": {
+        "model": "v2 fine-tuned",
+        "split": "val",
+        "pixel_accuracy": 0.9829,
+        "mean_iou": 0.917,
+        "per_class_iou": {
+          "other": 0.9834,
+          "live_coral": 0.93,
+          "bleached_coral": 0.8631,
+          "dead_coral": 0.8914
+        },
+        "coral_iou": 0.9453,
+        "coral_precision": 0.963,
+        "coral_recall": 0.9809,
+        "coral_vs_rest_pixel_accuracy": 0.9871,
+        "image_level_coral_present": {
+          "accuracy": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n_positive": 149,
+          "n_images": 166,
+          "always_majority_baseline": 0.8976
+        },
+        "image_level_bleaching_present": {
+          "accuracy": 0.994,
+          "precision": 1.0,
+          "recall": 0.9677,
+          "n_positive": 31,
+          "n_images": 166,
+          "always_majority_baseline": 0.8133
+        }
+      }
+    },
+    "note": "Grouped 4-class task; not comparable to the paper 39-class mIoU."
   },
   "coral_segmenter_deep_sea_domain_check": {
-    "what": "SUIM U-Net reef predictions on the 1313 deep-sea TrashCan test frames (no coral reef in this footage)",
-    "n_frames": 1313,
-    "frames_reef_ge_2pct_unet_only": 595,
-    "frames_reef_ge_5pct_unet_only": 180,
-    "frames_reef_ge_20pct_unet_only": 29,
-    "median_reef_fraction": 0.018,
-    "frames_coral_declared_auto_mode_unet_AND_colour_check": 0,
-    "conclusion": "U-Net is out of domain on deep-sea ROV footage (marks mud/sediment/rock as reef); auto mode therefore requires U-Net AND colour/texture check."
+    "what": "Coralscapes SegFormer MiT-B2 (v2 fine-tuned) reef/coral predictions on 200 deep-sea TrashCan test frames (random sample, seed 0, of 1313) (no coral reef in this footage)",
+    "model": "SegFormer MiT-B2 (v2 fine-tuned)",
+    "n_frames": 200,
+    "frames_reef_ge_2pct_unet_only": 1,
+    "frames_reef_ge_5pct_unet_only": 0,
+    "frames_reef_ge_20pct_unet_only": 0,
+    "median_reef_fraction": 0.0,
+    "frames_coral_declared_auto_mode_unet_AND_colour_check": 0
   },
   "observational_plastic_biodiversity_model": {
     "what": "Observational model: log10 OBIS species richness per 2-degree cell from NCEI microplastics, OBIS sampling effort, latitude, NOAA CRW SST and DHW",
@@ -253,7 +411,7 @@
     "plastic_detection": "REAL - YOLO11-seg trained on TrashCan 1.0, run on real test images",
     "plastic_detector_quality": "Held-out test - trash_plastic on unseen test videos at conf 0.18: precision 0.475 [0.337, 0.602], recall 0.452 [0.315, 0.594] (95% CI over 53 videos)",
     "fish_behavior": "REAL, SMALL SAMPLE - ByteTrack over test video frames with camera-motion compensation; few mobile animals are tracked, so plastic-related behaviour change cannot be concluded",
-    "coral_health": "TRAINED - U-Net (resnet34) on SUIM; official SUIM TEST reef IoU 0.684 (precision 0.76, recall 0.87). Not applied to TrashCan (deep-sea, no reef; the U-Net is out of domain there). Bleaching itself is still a colour rule inside the reef mask (SUIM has no bleaching labels).",
+    "coral_health": "TRAINED - SegFormer MiT-B2 (v2 fine-tuned) on Coralscapes; official TEST (5 unseen dive sites) coral IoU 0.767, bleached-coral IoU 0.694. Live / bleached / dead coral come from the model (expert labels), not a colour rule. Not applied to TrashCan (deep-sea, no reef).",
     "water_temperature_and_bleaching_alert": "REAL - NOAA Coral Reef Watch 5km daily satellite SST, Degree Heating Weeks and Bleaching Alert Area at each station",
     "ph_oxygen_salinity_turbidity": "PRESET - station values (Copernicus Marine loader is implemented but needs a free account: `copernicusmarine login`)",
     "station_assignment": "ASSUMED - TrashCan images have no geotags, so images are assigned to stations in rotation",

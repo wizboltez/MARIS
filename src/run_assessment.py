@@ -411,18 +411,58 @@ def run_complete_assessment(sample_limit: int = 40):
         "REAL - Copernicus Marine model values" if any_copernicus
         else "PRESET - station values (Copernicus Marine loader is implemented but needs a free account: `copernicusmarine login`)"
     )
-    seg_dir = PROJECT_ROOT / "models" / "coral_segmenter"
-    coral_test = json.loads((seg_dir / "suim_test_metrics.json").read_text()) if (seg_dir / "suim_test_metrics.json").exists() else None
-    coral_domain = json.loads((seg_dir / "domain_check_trashcan.json").read_text()) if (seg_dir / "domain_check_trashcan.json").exists() else None
-    if coral_test:
+    from src.modules.coral_segmentation import segmenter_info, select_segmenter_key
+
+    coral_key = select_segmenter_key()
+    coral_info = segmenter_info(coral_key) if coral_key else {"test_metrics": None, "domain_check": None}
+    coral_test, coral_domain = coral_info["test_metrics"], coral_info["domain_check"]
+    if coral_test and coral_key.startswith("coralscapes"):
+        pc = coral_test["per_class_iou"]
+        cs_name = coral_test["model"] if coral_key == "coralscapes" else f"SegFormer MiT-B2 ({coral_test['model']})"
+        il_b = coral_test["image_level_bleaching_present"]
         coral_status = (
-            f"TRAINED - U-Net ({coral_test['model'].split()[-1]}) on SUIM; official SUIM TEST reef IoU {coral_test['reef_iou']:.3f} "
+            f"TRAINED - {cs_name} on Coralscapes; official TEST (5 unseen dive sites) coral IoU "
+            f"{coral_test['coral_iou']:.3f}, bleached-coral IoU {pc['bleached_coral']:.3f}. Live / bleached / dead coral come "
+            "from the model (expert labels), not a colour rule. Not applied to TrashCan (deep-sea, no reef)."
+        )
+        coral_section = (
+            f"{cs_name} trained on Coralscapes (Red Sea reefs; 39 expert classes grouped into other / live / "
+            f"bleached / dead coral). Results on the official TEST split ({coral_test['n_test_images']} images from 5 dive sites "
+            "never used for training or model selection):\n\n"
+            "| Metric | Value |\n|---|---|\n"
+            f"| Coral IoU (live + bleached + dead) | **{coral_test['coral_iou']:.3f}** (gate {coral_test['gate_coral_iou']}) |\n"
+            f"| Live / bleached / dead coral IoU | {pc['live_coral']:.3f} / {pc['bleached_coral']:.3f} / {pc['dead_coral']:.3f} |\n"
+            f"| Mean IoU (4 groups) | {coral_test['mean_iou']:.3f} |\n"
+            f"| Pixel accuracy | {coral_test['pixel_accuracy']:.3f} |\n"
+            f"| Coral vs not-coral pixel accuracy | {coral_test['coral_vs_rest_pixel_accuracy']:.3f} |\n"
+            f"| Image level 'bleaching present?' accuracy | {il_b['accuracy']:.3f} (majority baseline {il_b.get('always_majority_baseline', il_b.get('always_positive_baseline')):.3f}) |\n\n"
+            + (
+                "**Credit and comparison:** v2 starts from the Coralscapes authors' published SegFormer "
+                f"(`{coral_test.get('source', 'EPFL-ECEO/segformer-b2-finetuned-coralscapes-1024-1024')}`) and was fine-tuned "
+                "to the 4 groups. On TEST: "
+                + "; ".join(f"{n} coral IoU {v['coral_iou']:.3f}, mIoU {v['mean_iou']:.3f}"
+                            for n, v in coral_test["all_candidates_test"].items())
+                + ". Fine-tuning changed TEST results very little; the gain over our own v1 (trained from ImageNet at half "
+                "resolution: coral IoU 0.704) comes mainly from the authors' model and full-resolution evaluation. "
+                "VAL scores (~0.94) are not reported as accuracy: the published model was most likely tuned on that split.\n\n"
+                if coral_test.get("all_candidates_test") else ""
+            )
+            + (
+                f"**Domain check on deep-sea footage:** on {coral_domain['n_frames']} TrashCan test frames (no reef) the model alone "
+                f"marked {coral_domain['frames_reef_ge_2pct_unet_only']} of them as >=2% coral; auto mode declared coral on "
+                f"{coral_domain['frames_coral_declared_auto_mode_unet_AND_colour_check']} of them."
+                if coral_domain else "Deep-sea domain check not run yet for this model (src/evaluation/coral_domain_check.py)."
+            )
+        )
+    elif coral_test:
+        coral_status = (
+            f"TRAINED - {coral_test['model']} on SUIM; official SUIM TEST reef IoU {coral_test['reef_iou']:.3f} "
             f"(precision {coral_test['reef_precision']:.2f}, recall {coral_test['reef_recall']:.2f}). Not applied to TrashCan "
-            "(deep-sea, no reef; the U-Net is out of domain there). Bleaching itself is still a colour rule inside the reef mask "
+            "(deep-sea, no reef; the segmenter is out of domain there). Bleaching itself is still a colour rule inside the reef mask "
             "(SUIM has no bleaching labels)."
         )
         coral_section = (
-            f"U-Net with a {coral_test['model'].split()[-1]} encoder trained on SUIM (8 classes). Results on the official SUIM TEST "
+            f"{coral_test['model']} trained on SUIM (8 classes). Results on the official SUIM TEST "
             f"split ({coral_test['n_test_images']} images, never used for training or model selection):\n\n"
             "| Metric | Value |\n|---|---|\n"
             f"| Reef IoU (reefs & invertebrates) | **{coral_test['reef_iou']:.3f}** (gate {coral_test['gate_reef_iou']}) |\n"
@@ -430,7 +470,7 @@ def run_complete_assessment(sample_limit: int = 40):
             f"| Mean IoU (8 classes) | {coral_test['mean_iou']:.3f} |\n"
             f"| Pixel accuracy | {coral_test['pixel_accuracy']:.3f} |\n\n"
             + (
-                f"**Domain check on deep-sea footage:** on the {coral_domain['n_frames']} TrashCan test frames (no reef), the U-Net "
+                f"**Domain check on deep-sea footage:** on the {coral_domain['n_frames']} TrashCan test frames (no reef), the segmenter "
                 f"alone marked {coral_domain['frames_reef_ge_2pct_unet_only']} frames as >=2% reef (mud, sediment and rock). "
                 "It is therefore only trusted together with the colour/texture coral check in auto mode, which reduces this to "
                 f"{coral_domain['frames_coral_declared_auto_mode_unet_AND_colour_check']} frames."
@@ -609,7 +649,7 @@ def run_complete_assessment(sample_limit: int = 40):
 
 1. **Plastic detection & segmentation**: YOLO11-seg trained on TrashCan 1.0; coverage % from real pixel masks.
 2. **Fish detection & tracking**: the same detector + ByteTrack across consecutive video frames, with ROV camera motion removed by phase correlation; speed, turning and distance to plastic per track.
-3. **Coral health**: U-Net reef segmentation trained on SUIM (see Section 4) plus a colour rule for bleaching inside the reef area; skipped for deep-sea TrashCan frames.
+3. **Coral health**: SegFormer trained on Coralscapes predicts live / bleached / dead coral directly (see Section 4); if no Coralscapes model is installed, a SUIM reef segmenter plus a colour rule for bleaching is used. Skipped for deep-sea TrashCan frames.
 4. **Water quality**: Water Quality Index from temperature (NOAA CRW satellite), pH, dissolved oxygen, salinity and turbidity.
 5. **Impact fusion**: XGBoost regressors predict the MPIS (0–100) and biodiversity loss % (expert-formula targets; held-out R² {fit_report.get('mpis_r2', 'n/a')} for MPIS).
 6. **Explainability**: SHAP TreeExplainer attributions for every transect, and Grad-CAM on the detector.

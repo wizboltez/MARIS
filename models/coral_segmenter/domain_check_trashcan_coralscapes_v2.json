@@ -1,0 +1,10 @@
+{
+  "what": "Coralscapes SegFormer MiT-B2 (v2 fine-tuned) reef/coral predictions on 200 deep-sea TrashCan test frames (random sample, seed 0, of 1313) (no coral reef in this footage)",
+  "model": "SegFormer MiT-B2 (v2 fine-tuned)",
+  "n_frames": 200,
+  "frames_reef_ge_2pct_unet_only": 1,
+  "frames_reef_ge_5pct_unet_only": 0,
+  "frames_reef_ge_20pct_unet_only": 0,
+  "median_reef_fraction": 0.0,
+  "frames_coral_declared_auto_mode_unet_AND_colour_check": 0
+}

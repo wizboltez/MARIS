@@ -24,7 +24,7 @@ class CoralHealthAnalyzer:
     """Evaluates coral cover, bleaching severity, and algal overgrowth from underwater imagery."""
 
     def __init__(self, use_segmenter: bool = True):
-        # SUIM U-Net reef segmenter if trained + passed its quality gate, else None (colour heuristic only)
+        # SUIM reef segmenter (SegFormer or U-Net, see coral_segmentation.py) if trained + passed its gate, else None
         self.segmenter = None
         if use_segmenter:
             from src.modules.coral_segmentation import load_reef_segmenter
@@ -84,22 +84,34 @@ class CoralHealthAnalyzer:
             float(np.abs(cv2.Laplacian(gray, cv2.CV_32F))[healthy_mask].mean()) if healthy_mask.any() else 0.0
         )
 
-        # With the SUIM U-Net, colour classes are only counted inside the predicted reef area
         reef_fraction = None
+        dead_mask = np.zeros_like(healthy_mask)
         if self.segmenter is not None and habitat != "non_reef":
-            reef = self.segmenter.predict(image_bgr)["reef_mask"]
+            seg = self.segmenter.predict(image_bgr)
+            reef = seg["reef_mask"]
             reef_fraction = float(reef.mean())
-            bleached_mask &= reef
-            stressed_mask &= reef
-            algae_mask &= reef
-            healthy_mask = reef & ~bleached_mask & ~stressed_mask & ~algae_mask  # pigmented reef
+            if self.segmenter.learns_bleaching:
+                # Coralscapes model: live / bleached / dead coral come from expert-labelled training data,
+                # replacing the colour rule. Algae (colour rule) is only counted outside the coral.
+                healthy_mask = seg["live_mask"]
+                bleached_mask = seg["bleached_mask"]
+                dead_mask = seg["dead_mask"]
+                stressed_mask = np.zeros_like(healthy_mask)
+                algae_mask &= ~reef
+            else:
+                # SUIM reef segmenter: colour classes are only counted inside the predicted reef area
+                bleached_mask &= reef
+                stressed_mask &= reef
+                algae_mask &= reef
+                healthy_mask = reef & ~bleached_mask & ~stressed_mask & ~algae_mask  # pigmented reef
 
         bleached_px = int(bleached_mask.sum())
         healthy_px = int(healthy_mask.sum())
         algae_px = int(algae_mask.sum())
         stressed_px = int(stressed_mask.sum())
+        dead_px = int(dead_mask.sum())
 
-        total_coral_px = max(1, healthy_px + bleached_px + stressed_px)
+        total_coral_px = max(1, healthy_px + bleached_px + stressed_px + dead_px)
         substrate_px = max(1, total_coral_px + algae_px)
 
         coral_cover_pct = round((total_coral_px / total_pixels) * 100.0, 1)
@@ -118,17 +130,26 @@ class CoralHealthAnalyzer:
             from src.modules.coral_segmentation import MIN_REEF_FRACTION
 
             # The SUIM U-Net is out of domain on deep-sea footage: it marked 595/1313 TrashCan test
-            # frames as >=2% reef (mud / sediment / rock). So in auto mode the U-Net must AND the
+            # frames as >=2% reef (mud / sediment / rock). So in auto mode the segmenter must AND the
             # colour/texture presence check (0/1313 deep-sea false passes) before coral is declared.
             # (Colour classes above are already restricted to the reef mask, so recompute the check
             # on the full-image pigmented mask.)
+            # The colour check misses heavily bleached / dead reefs (not pigmented), so it is dropped for a
+            # segmenter whose own deep-sea check (coral_domain_check.py) shows <= 1% false-positive frames.
             colour_present = full_pigmented_fraction >= MIN_PIGMENTED_FRACTION and full_pigmented_texture >= MIN_PIGMENTED_TEXTURE
-            coral_present = reef_fraction >= MIN_REEF_FRACTION and colour_present
+            dc = self.segmenter.domain_check
+            trusted_alone = bool(dc) and dc["frames_reef_ge_2pct_unet_only"] <= 0.01 * dc["n_frames"]
+            coral_present = reef_fraction >= MIN_REEF_FRACTION and (colour_present or trusted_alone)
         else:
             coral_present = pigmented_fraction >= MIN_PIGMENTED_FRACTION and pigmented_texture >= MIN_PIGMENTED_TEXTURE
-        method = "SUIM U-Net reef mask + colour" if reef_fraction is not None else "colour/texture heuristic"
+        if reef_fraction is None:
+            method = "colour/texture heuristic"
+        elif self.segmenter.learns_bleaching:
+            method = f"{self.segmenter.dataset} {self.segmenter.name}: live / bleached / dead coral from the model"
+        else:
+            method = f"{self.segmenter.dataset} {self.segmenter.name} reef mask + colour"
 
-        masks = {"healthy": healthy_mask, "stressed": stressed_mask, "bleached": bleached_mask, "algae": algae_mask}
+        masks = {"healthy": healthy_mask, "stressed": stressed_mask, "bleached": bleached_mask, "algae": algae_mask, "dead": dead_mask}
         if not coral_present:
             empty = np.zeros_like(healthy_mask)
             return {
@@ -137,6 +158,7 @@ class CoralHealthAnalyzer:
                 "bleaching_severity_index": 0.0,
                 "healthy_coral_ratio_pct": 0.0,
                 "bleached_coral_ratio_pct": 0.0,
+                "dead_coral_ratio_pct": 0.0,
                 "algae_competition_ratio": 0.0,
                 "health_status": "No coral detected - bleaching not assessed",
                 "noaa_alert_level": "N/A",
@@ -188,6 +210,7 @@ class CoralHealthAnalyzer:
             "bleaching_severity_index": round(bsi, 1),
             "healthy_coral_ratio_pct": round((healthy_px / total_coral_px) * 100.0, 1),
             "bleached_coral_ratio_pct": round((bleached_px / total_coral_px) * 100.0, 1),
+            "dead_coral_ratio_pct": round((dead_px / total_coral_px) * 100.0, 1),
             "algae_competition_ratio": algae_ratio,
             "health_status": health_status,
             "noaa_alert_level": noaa_alert,
@@ -211,6 +234,8 @@ def draw_coral_health_overlay(image_bgr: np.ndarray, analysis: dict, alpha: floa
         overlay[masks["bleached"]] = (245, 245, 255)  # White/bright cyan for bleached
     if "algae" in masks and masks["algae"].any():
         overlay[masks["algae"]] = (0, 100, 160)  # Brownish for algae
+    if "dead" in masks and masks["dead"].any():
+        overlay[masks["dead"]] = (90, 90, 90)  # Grey for dead coral (Coralscapes model)
 
     cv2.addWeighted(overlay, alpha, out, 1 - alpha, 0, out)
 
@@ -256,7 +281,7 @@ def plot_coral_health_summary(analysis: dict, save_path: str | None = None) -> p
         return fig
 
     # Panel 1: Substrate composition
-    categories = ["Healthy Coral", "Bleached Coral", "Stressed / Other"]
+    categories = ["Healthy Coral", "Bleached Coral", "Dead / Stressed / Other"]
     bleached = analysis["bleached_coral_ratio_pct"]
     healthy = analysis["healthy_coral_ratio_pct"]
     other = max(0.0, 100.0 - (healthy + bleached))

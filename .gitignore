@@ -32,6 +32,9 @@ Thumbs.db
 # Large trained weights (~98 MB): kept on Google Drive (MyDrive/suim/suim_unet.pt);
 # the small config + test-metrics JSONs next to it ARE committed.
 models/coral_segmenter/*.pt
+# Coralscapes SegFormer v2 weights (~110 MB, over GitHub's 100 MB limit): on Google Drive
+# (MyDrive/coralscapes/coralscapes_segformer_v2/); its config.json and the metrics JSONs ARE committed.
+models/coral_segmenter/**/*.safetensors
 
 # Fish-only training set built from FathomNet + TrashCan (regenerable)
 data/processed_fish/
@@ -39,3 +42,7 @@ data/processed_fish/
 # Cached prediction pickles and the (not adopted) fish detector weights - regenerable / on Drive
 outputs/experiments/**/*.pkl
 models/fish_detector/*.pt
+
+# Copernicus NetCDF downloads and Allen Coral Atlas GeoJSON (environmental risk module)
+*.nc
+*.geojson

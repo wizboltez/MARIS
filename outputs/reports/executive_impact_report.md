@@ -28,7 +28,7 @@
 
 1. **Plastic detection & segmentation**: YOLO11-seg trained on TrashCan 1.0; coverage % from real pixel masks.
 2. **Fish detection & tracking**: the same detector + ByteTrack across consecutive video frames, with ROV camera motion removed by phase correlation; speed, turning and distance to plastic per track.
-3. **Coral health**: U-Net reef segmentation trained on SUIM (see Section 4) plus a colour rule for bleaching inside the reef area; skipped for deep-sea TrashCan frames.
+3. **Coral health**: SegFormer trained on Coralscapes predicts live / bleached / dead coral directly (see Section 4); if no Coralscapes model is installed, a SUIM reef segmenter plus a colour rule for bleaching is used. Skipped for deep-sea TrashCan frames.
 4. **Water quality**: Water Quality Index from temperature (NOAA CRW satellite), pH, dissolved oxygen, salinity and turbidity.
 5. **Impact fusion**: XGBoost regressors predict the MPIS (0–100) and biodiversity loss % (expert-formula targets; held-out R² 0.945 for MPIS).
 6. **Explainability**: SHAP TreeExplainer attributions for every transect, and Grad-CAM on the detector.
@@ -64,16 +64,20 @@ Plastic recall is the main limit (most plastic items are still missed), and fish
 
 ## 4. Coral Reef Segmentation Model
 
-U-Net with a resnet34 encoder trained on SUIM (8 classes). Results on the official SUIM TEST split (110 images, never used for training or model selection):
+SegFormer MiT-B2 (v2 fine-tuned) trained on Coralscapes (Red Sea reefs; 39 expert classes grouped into other / live / bleached / dead coral). Results on the official TEST split (392 images from 5 dive sites never used for training or model selection):
 
 | Metric | Value |
 |---|---|
-| Reef IoU (reefs & invertebrates) | **0.684** (gate 0.5) |
-| Reef precision / recall | 0.762 / 0.870 |
-| Mean IoU (8 classes) | 0.684 |
-| Pixel accuracy | 0.854 |
+| Coral IoU (live + bleached + dead) | **0.767** (gate 0.5) |
+| Live / bleached / dead coral IoU | 0.806 / 0.694 / 0.328 |
+| Mean IoU (4 groups) | 0.693 |
+| Pixel accuracy | 0.943 |
+| Coral vs not-coral pixel accuracy | 0.952 |
+| Image level 'bleaching present?' accuracy | 0.957 (majority baseline 0.829) |
 
-**Domain check on deep-sea footage:** on the 1313 TrashCan test frames (no reef), the U-Net alone marked 595 frames as >=2% reef (mud, sediment and rock). It is therefore only trusted together with the colour/texture coral check in auto mode, which reduces this to 0 frames.
+**Credit and comparison:** v2 starts from the Coralscapes authors' published SegFormer (`EPFL-ECEO/segformer-b2-finetuned-coralscapes-1024-1024`) and was fine-tuned to the 4 groups. On TEST: published (no fine-tune) coral IoU 0.768, mIoU 0.688; v2 fine-tuned coral IoU 0.767, mIoU 0.693. Fine-tuning changed TEST results very little; the gain over our own v1 (trained from ImageNet at half resolution: coral IoU 0.704) comes mainly from the authors' model and full-resolution evaluation. VAL scores (~0.94) are not reported as accuracy: the published model was most likely tuned on that split.
+
+**Domain check on deep-sea footage:** on 200 TrashCan test frames (no reef) the model alone marked 1 of them as >=2% coral; auto mode declared coral on 0 of them.
 
 ## 5. Real-World Evidence: Microplastics vs. Recorded Biodiversity
 
@@ -127,7 +131,7 @@ average (e.g. most images have little or no plastic).
 | Plastic Detection | REAL - YOLO11-seg trained on TrashCan 1.0, run on real test images |
 | Plastic Detector Quality | Held-out test - trash_plastic on unseen test videos at conf 0.18: precision 0.475 [0.337, 0.602], recall 0.452 [0.315, 0.594] (95% CI over 53 videos) |
 | Fish Behavior | REAL, SMALL SAMPLE - ByteTrack over test video frames with camera-motion compensation; few mobile animals are tracked, so plastic-related behaviour change cannot be concluded |
-| Coral Health | TRAINED - U-Net (resnet34) on SUIM; official SUIM TEST reef IoU 0.684 (precision 0.76, recall 0.87). Not applied to TrashCan (deep-sea, no reef; the U-Net is out of domain there). Bleaching itself is still a colour rule inside the reef mask (SUIM has no bleaching labels). |
+| Coral Health | TRAINED - SegFormer MiT-B2 (v2 fine-tuned) on Coralscapes; official TEST (5 unseen dive sites) coral IoU 0.767, bleached-coral IoU 0.694. Live / bleached / dead coral come from the model (expert labels), not a colour rule. Not applied to TrashCan (deep-sea, no reef). |
 | Water Temperature And Bleaching Alert | REAL - NOAA Coral Reef Watch 5km daily satellite SST, Degree Heating Weeks and Bleaching Alert Area at each station |
 | Ph Oxygen Salinity Turbidity | PRESET - station values (Copernicus Marine loader is implemented but needs a free account: `copernicusmarine login`) |
 | Station Assignment | ASSUMED - TrashCan images have no geotags, so images are assigned to stations in rotation |

@@ -1,0 +1,97 @@
+{
+  "fish_test_frozen": {
+    "old_16_class_at_0.18": {
+      "precision": 0.407,
+      "recall": 0.159,
+      "f1": 0.229,
+      "precision_ci": [
+        0.071,
+        0.623
+      ],
+      "recall_ci": [
+        0.042,
+        0.272
+      ]
+    },
+    "new_fish_at_val_chosen_0.35": {
+      "precision": 0.265,
+      "recall": 0.205,
+      "f1": 0.231,
+      "precision_ci": [
+        0.08,
+        0.464
+      ],
+      "recall_ci": [
+        0.088,
+        0.387
+      ]
+    },
+    "decision": "keep baseline in pipeline: test F1 0.231 vs 0.229, overlapping 95% CIs (no significant gain)"
+  },
+  "baseline_record": "baseline_record.txt",
+  "plastic_test_conf0.18": {
+    "threshold": 0.18,
+    "precision": "0.475 [0.337, 0.602]",
+    "recall": "0.452 [0.315, 0.594]",
+    "f1": "0.463 [0.340, 0.575]"
+  },
+  "per_class_table": "per_class_metrics_conf0.18.csv",
+  "weak_class_diagnosis": [
+    {
+      "class": "animal_fish",
+      "train_instances": 461,
+      "n_test": 151.0,
+      "tp": 24,
+      "fp": 35,
+      "fn": 127,
+      "precision": 0.407,
+      "recall": 0.159,
+      "main_error": "mostly missed objects"
+    },
+    {
+      "class": "trash_fishing_gear",
+      "train_instances": 170,
+      "n_test": 18.0,
+      "tp": 3,
+      "fp": 11,
+      "fn": 15,
+      "precision": 0.214,
+      "recall": 0.167,
+      "main_error": "both"
+    },
+    {
+      "class": "trash_metal",
+      "train_instances": 768,
+      "n_test": 166.0,
+      "tp": 31,
+      "fp": 83,
+      "fn": 135,
+      "precision": 0.272,
+      "recall": 0.187,
+      "main_error": "both"
+    },
+    {
+      "class": "trash_paper",
+      "train_instances": 157,
+      "n_test": 36.0,
+      "tp": 7,
+      "fp": 10,
+      "fn": 29,
+      "precision": 0.412,
+      "recall": 0.194,
+      "main_error": "mostly missed objects"
+    },
+    {
+      "class": "trash_plastic",
+      "train_instances": 1194,
+      "n_test": 500.0,
+      "tp": 226,
+      "fp": 250,
+      "fn": 274,
+      "precision": 0.475,
+      "recall": 0.452,
+      "main_error": "both"
+    }
+  ],
+  "demo_frames": "demo_frames/ (green = ground truth, orange = correct detection, red = false alarm); best-case frames are selected from the best VAL videos and are NOT representative of the dataset"
+}

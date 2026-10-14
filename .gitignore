@@ -35,3 +35,7 @@ models/coral_segmenter/*.pt
 
 # Fish-only training set built from FathomNet + TrashCan (regenerable)
 data/processed_fish/
+
+# Cached prediction pickles and the (not adopted) fish detector weights - regenerable / on Drive
+outputs/experiments/**/*.pkl
+models/fish_detector/*.pt

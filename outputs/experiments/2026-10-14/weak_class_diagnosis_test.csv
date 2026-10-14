@@ -1,0 +1,6 @@
+split,class,train_instances,n_val,tp,fp,fn,precision,recall,f1,n_test,main_error
+test,animal_fish,461,,24,35,127,0.407,0.159,0.229,151.0,mostly missed objects
+test,trash_fishing_gear,170,,3,11,15,0.214,0.167,0.188,18.0,both
+test,trash_metal,768,,31,83,135,0.272,0.187,0.221,166.0,both
+test,trash_paper,157,,7,10,29,0.412,0.194,0.264,36.0,mostly missed objects
+test,trash_plastic,1194,,226,250,274,0.475,0.452,0.463,500.0,both

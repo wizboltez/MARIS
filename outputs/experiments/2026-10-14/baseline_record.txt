@@ -1,0 +1,17 @@
+git_commit: f0cba0d1fb7e2c6f0ab2671c09417693458724d5
+branch: full-assessment-pipeline
+recorded: 2026-10-14T15:02:46+05:30
+checkpoints:
+  models/plastic_detector/best_model.pt sha256=eb8edbbcedf8aebb bytes=20515428
+  models/fish_detector/best_fish.pt sha256=72c96f20c1030ab2 bytes=19163290
+  models/coral_segmenter/suim_unet.pt sha256=174c0ffde7902166 bytes=97923979
+baseline_metrics_files:
+  outputs/metrics/comprehensive_system_metrics.json
+  outputs/metrics/dataset_validation_report.json
+  outputs/metrics/eval_metrics_test.json
+  outputs/metrics/fish_detector_comparison.json
+  outputs/metrics/gradcam_targeted_evaluation.json
+  outputs/metrics/held_out_test_metrics_tuned.json
+  outputs/metrics/hud_filter_test_ablation.json
+  outputs/metrics/optimal_thresholds_val.json
+  outputs/metrics/test_bootstrap_confidence_intervals.json

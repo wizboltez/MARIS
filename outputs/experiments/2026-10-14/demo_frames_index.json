@@ -1,0 +1,68 @@
+[
+  {
+    "kind": "best-case",
+    "task": "plastic",
+    "video": "vid_000029",
+    "frame": "vid_000029_frame0000017.jpg",
+    "video_f1": 1.0,
+    "file": "BEST-plastic_vid_000029_frame0000017.jpg"
+  },
+  {
+    "kind": "best-case",
+    "task": "plastic",
+    "video": "vid_000161",
+    "frame": "vid_000161_frame0000013.jpg",
+    "video_f1": 0.909,
+    "file": "BEST-plastic_vid_000161_frame0000013.jpg"
+  },
+  {
+    "kind": "best-case",
+    "task": "plastic",
+    "video": "vid_000045",
+    "frame": "vid_000045_frame0000045.jpg",
+    "video_f1": 0.72,
+    "file": "BEST-plastic_vid_000045_frame0000045.jpg"
+  },
+  {
+    "kind": "failure",
+    "task": "plastic",
+    "video": "vid_000532",
+    "frame": "vid_000532_frame0000047.jpg",
+    "missed": 2,
+    "false_pos": 0,
+    "file": "FAIL-plastic_vid_000532_frame0000047.jpg"
+  },
+  {
+    "kind": "best-case",
+    "task": "fish",
+    "video": "vid_000430",
+    "frame": "vid_000430_frame0000010.jpg",
+    "video_f1": 0.909,
+    "file": "BEST-fish_vid_000430_frame0000010.jpg"
+  },
+  {
+    "kind": "best-case",
+    "task": "fish",
+    "video": "vid_000433",
+    "frame": "vid_000433_frame0000018.jpg",
+    "video_f1": 0.741,
+    "file": "BEST-fish_vid_000433_frame0000018.jpg"
+  },
+  {
+    "kind": "best-case",
+    "task": "fish",
+    "video": "vid_000440",
+    "frame": "vid_000440_frame0000110.jpg",
+    "video_f1": 0.043,
+    "file": "BEST-fish_vid_000440_frame0000110.jpg"
+  },
+  {
+    "kind": "failure",
+    "task": "fish",
+    "video": "vid_000045",
+    "frame": "vid_000045_frame0000003.jpg",
+    "missed": 2,
+    "false_pos": 0,
+    "file": "FAIL-fish_vid_000045_frame0000003.jpg"
+  }
+]

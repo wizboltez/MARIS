@@ -1,0 +1,39 @@
+{
+  "test_split": "TrashCan test (53 videos, never used for training or model selection)",
+  "conf": 0.18,
+  "iou": 0.5,
+  "old_16_class_model": {
+    "precision": 0.407,
+    "precision_ci": [
+      0.071,
+      0.623
+    ],
+    "recall": 0.159,
+    "recall_ci": [
+      0.042,
+      0.272
+    ],
+    "f1": 0.229,
+    "tp": 24,
+    "fp": 35,
+    "n_fish": 151
+  },
+  "new_fish_detector": {
+    "precision": 0.178,
+    "precision_ci": [
+      0.059,
+      0.292
+    ],
+    "recall": 0.384,
+    "recall_ci": [
+      0.253,
+      0.529
+    ],
+    "f1": 0.244,
+    "tp": 58,
+    "fp": 267,
+    "n_fish": 151
+  },
+  "new_model_better_f1": true,
+  "train_data": "FathomNet deep-sea fish + TrashCan train fish + 1000 TrashCan train negatives"
+}

@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from src.config import CLASS_NAMES
+from src.config import CLASS_NAMES, plastic_conf_threshold
 
 FISH_IDS = [i for i, n in enumerate(CLASS_NAMES) if n.startswith("animal_")]
 # Animals that actually swim/move; behaviour metrics use only these.
@@ -65,12 +65,14 @@ def load_tracking_model(weights_path) -> "YOLO":
     return YOLO(str(weights_path))
 
 
-def track_video(yolo_model, frame_paths: list[Path], conf: float = 0.05, plastic_conf: float = 0.18) -> pd.DataFrame:
+def track_video(yolo_model, frame_paths: list[Path], conf: float = 0.05, plastic_conf: float | None = None) -> pd.DataFrame:
     """Run ByteTrack over one video's frames (pass a model from load_tracking_model()).
 
     Returns one row per (frame, detection) for fish and plastic, with track_id for fish
     and the camera shift of that frame relative to the previous one.
     """
+    if plastic_conf is None:
+        plastic_conf = plastic_conf_threshold()
     rows = []
     prev_gray = None
 

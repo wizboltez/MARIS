@@ -22,7 +22,9 @@ import numpy as np
 import pandas as pd
 from ultralytics import YOLO
 
-from src.config import BEST_MODEL_PATH, CLASS_NAMES, FIGURES_DIR, METRICS_DIR, PREDICTIONS_DIR, PROJECT_ROOT
+from src.config import BEST_MODEL_PATH, CLASS_NAMES, FIGURES_DIR, METRICS_DIR, PREDICTIONS_DIR, PROJECT_ROOT, plastic_conf_threshold
+
+PLASTIC_CONF = plastic_conf_threshold()
 from src.modules.coral_health import CoralHealthAnalyzer, draw_coral_health_overlay, plot_coral_health_summary
 from src.modules.fish_behavior import (
     analyze_fish_behavior,
@@ -89,7 +91,7 @@ def summarise_tracking(all_tracks: pd.DataFrame, videos: dict, yolo_model) -> di
         vid_tracks = multi[multi["video_id"] == best_vid]
         frame_path = videos[best_vid][int(vid_tracks["last_frame"].max())]
         frame = cv2.imread(str(frame_path))
-        res = yolo_model(frame, conf=0.18, verbose=False)[0]
+        res = yolo_model(frame, conf=PLASTIC_CONF, verbose=False)[0]
         plastic = [b for b, c in zip(res.boxes.xyxy.cpu().numpy(), res.boxes.cls.cpu().numpy()) if int(c) == PLASTIC_ID]
         cv2.imwrite(str(FIGURES_DIR / "fish_behavior_tracking.png"), draw_trajectories(frame, vid_tracks, plastic))
 
@@ -121,7 +123,7 @@ def save_gradcam_grid(yolo_model, gradcam, df_plastic_paths, n: int = 6) -> list
     tiles, heat_in_box = [], []
     for path in df_plastic_paths[:n]:
         img = cv2.imread(str(path))
-        res = yolo_model(img, conf=0.18, verbose=False)[0]
+        res = yolo_model(img, conf=PLASTIC_CONF, verbose=False)[0]
         cam = gradcam.compute(img, class_id=PLASTIC_ID)["cam"]
         overlay = overlay_cam(img, cam)
         inside = np.zeros(img.shape[:2], dtype=bool)
@@ -202,7 +204,7 @@ def run_complete_assessment(sample_limit: int = 40):
         h, w = img_bgr.shape[:2]
 
         # A. YOLO Inference
-        res = yolo_model(img_bgr, conf=0.18, verbose=False)[0]
+        res = yolo_model(img_bgr, conf=PLASTIC_CONF, verbose=False)[0]
         plastic_stats = quantify(res)
 
         # Extract plastic and fish boxes

@@ -47,6 +47,17 @@ PREDICTIONS_CSV = PREDICTIONS_DIR / "plastic_predictions.csv"
 
 MODELS_DIR = PROJECT_ROOT / "models" / "plastic_detector"
 BEST_MODEL_PATH = MODELS_DIR / "best_model.pt"
+# Operating confidence threshold of the deployed detector. Written by the training notebook
+# (chosen on the VALIDATION split) next to the weights; 0.18 = the original model's threshold.
+OPERATING_THRESHOLD_PATH = MODELS_DIR / "operating_threshold.json"
+
+
+def plastic_conf_threshold() -> float:
+    import json
+
+    if OPERATING_THRESHOLD_PATH.exists():
+        return float(json.loads(OPERATING_THRESHOLD_PATH.read_text())["conf"])
+    return 0.18
 
 # Category order/ids exactly as they appear in the TrashCan material_version
 # COCO json (category id 1..16). Index in this list = YOLO class id (0-based).

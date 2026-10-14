@@ -221,7 +221,7 @@ st.title("🌊 MARIS: Marine Plastic & Biodiversity Monitor")
 st.caption("Detect plastic, track fish and check coral health in underwater images, then estimate the impact.")
 
 # Sidebar
-st.sidebar.image("https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=500&auto=format&fit=crop&q=80")
+st.sidebar.image(str(PROJECT_ROOT / "assets" / "sidebar_diver.jpg"))  # Unsplash photo, stored locally so it shows offline
 st.sidebar.header("MARIS")
 
 # Navigation

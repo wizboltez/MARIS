@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
-from src.config import BEST_MODEL_PATH, CLASS_NAMES, PREDICTIONS_CSV, PREDICTIONS_DIR  # noqa: E402
+from src.config import BEST_MODEL_PATH, CLASS_NAMES, PREDICTIONS_CSV, PREDICTIONS_DIR, plastic_conf_threshold  # noqa: E402
 from src.utils.common import get_device  # noqa: E402
 from src.utils.quantify import quantify  # noqa: E402
 from src.utils.visualization import draw_detections  # noqa: E402
@@ -44,7 +44,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--source", type=str, required=True, help="Image file or directory of images")
     p.add_argument("--weights", type=str, default=str(BEST_MODEL_PATH))
     p.add_argument("--imgsz", type=int, default=640)
-    p.add_argument("--conf", type=float, default=0.25)
+    p.add_argument("--conf", type=float, default=plastic_conf_threshold())
     p.add_argument("--device", type=str, default="auto")
     p.add_argument("--lat", type=float, default=None)
     p.add_argument("--lon", type=float, default=None)

@@ -220,11 +220,14 @@ def draw_fish_tracks_and_behavior(
             pcx, pcy = int((px1 + px2) / 2), int((py1 + py2) / 2)
             cv2.circle(out, (pcx, pcy), 65, (0, 0, 230), 1, lineType=cv2.LINE_AA)
 
-    for i, fish in enumerate(fish_detections):
+    single_image = stats.get("measurement", "").startswith("single image")
+    for fish in fish_detections:
         box = [int(v) for v in fish["bbox"]]
         cls_name = fish.get("cls_name", "fish")
+        # eels are fish; the detector's fish/eel split is unreliable outside deep-sea TrashCan footage
+        cls_name = "fish" if cls_name in ("fish", "eel", "animal_fish", "animal_eel") else cls_name.replace("animal_", "")
         conf = fish.get("conf", 0.8)
-        track_id = fish.get("track_id", i + 1)
+        track_id = fish.get("track_id")
 
         cx, cy = int((box[0] + box[2]) / 2), int((box[1] + box[3]) / 2)
 
@@ -232,7 +235,7 @@ def draw_fish_tracks_and_behavior(
         color = (255, 200, 0)  # BGR cyan-blue
         cv2.rectangle(out, (box[0], box[1]), (box[2], box[3]), color, 2)
 
-        label = f"ID #{track_id} {cls_name} {conf:.2f}"
+        label = f"{cls_name} {conf:.2f}" if single_image or track_id is None else f"ID #{track_id} {cls_name} {conf:.2f}"
         (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.42, 1)
         cv2.rectangle(out, (box[0], max(0, box[1] - th - 6)), (box[0] + tw + 4, box[1]), color, -1)
         cv2.putText(out, label, (box[0] + 2, box[1] - 3), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 0, 0), 1, cv2.LINE_AA)
@@ -240,8 +243,13 @@ def draw_fish_tracks_and_behavior(
     # Banner overlay at bottom with Behavioral Anomaly Index
     bai = stats.get("behavioral_anomaly_index", 20.0)
     state = stats.get("behavior_state", "Normal")
-    banner_text = f"Fish BAI: {bai:.1f}% | State: {state}"
-    b_color = (0, 180, 0) if bai < 40 else ((0, 165, 255) if bai < 70 else (0, 0, 220))
+    if single_image:
+        # behaviour needs movement over time; one photo only gives counts
+        banner_text = f"Animals detected: {len(fish_detections)} | Behaviour needs video (Fish Tracking page)"
+        b_color = (160, 160, 160)
+    else:
+        banner_text = f"Fish BAI: {bai:.1f}% | State: {state}"
+        b_color = (0, 180, 0) if bai < 40 else ((0, 165, 255) if bai < 70 else (0, 0, 220))
     cv2.rectangle(out, (10, h - 36), (w - 10, h - 8), (20, 20, 20), -1)
     cv2.rectangle(out, (10, h - 36), (w - 10, h - 8), b_color, 2)
     cv2.putText(out, banner_text, (18, h - 16), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)

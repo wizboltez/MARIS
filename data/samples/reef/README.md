@@ -2,7 +2,7 @@
 
 Three images from the **validation** split of Coralscapes (Sauder et al., 2025, EPFL-ECEO;
 https://huggingface.co/datasets/EPFL-ECEO/coralscapes, Apache-2.0), saved at full resolution for uploading in the
-dashboard's Diagnostic Studio (habitat "Auto-detect coral" or "Coral reef").
+dashboard's "Analyse an Image" page (habitat "Auto-detect coral" or "Coral reef").
 
 | File | Expert labels (share of the coral area) | Use |
 |---|---|---|

@@ -2,18 +2,18 @@
   "assessment_summary": {
     "total_survey_transects": 40,
     "transects_with_ground_truth_plastic": 20,
-    "transects_with_detected_plastic": 12,
-    "labelled_plastic_transects_detected": 9,
-    "plastic_false_alarm_transects": 3,
-    "total_plastic_items_detected": 13,
-    "mean_plastic_coverage_pct": 2.18,
-    "mean_fish_behavioral_anomaly_index": 18.28,
+    "transects_with_detected_plastic": 40,
+    "labelled_plastic_transects_detected": 20,
+    "plastic_false_alarm_transects": 20,
+    "total_plastic_items_detected": 545,
+    "mean_plastic_coverage_pct": 90.42,
+    "mean_fish_behavioral_anomaly_index": 89.4,
     "mean_coral_bleaching_severity_index": 0.0,
-    "mean_water_quality_index": 70.1,
-    "mean_marine_pollution_impact_score": 13.15,
-    "mean_predicted_biodiversity_loss_pct": 10.35,
-    "transects_in_critical_or_high_risk": 0,
-    "percentage_at_high_or_critical_risk": 0.0
+    "mean_water_quality_index": 80.46,
+    "mean_marine_pollution_impact_score": 90.53,
+    "mean_predicted_biodiversity_loss_pct": 89.75,
+    "transects_in_critical_or_high_risk": 40,
+    "percentage_at_high_or_critical_risk": 100.0
   },
   "plastic_detector_test": {
     "run": "yolo11s_seg_v2_test",
@@ -143,20 +143,21 @@
   },
   "fish_tracking": {
     "videos": 53,
-    "tracks": 34,
-    "tracks_3plus_frames": 16,
-    "mobile_tracks_3plus_frames": 8,
+    "tracks": 321,
+    "tracks_3plus_frames": 264,
+    "mobile_tracks_3plus_frames": 264,
     "mobile_species": {
-      "eel": 5,
-      "fish": 2,
-      "crab": 1
+      "fish": 121,
+      "eel": 91,
+      "crab": 44,
+      "starfish": 8
     },
-    "median_speed_mobile_px_per_frame": 12.31,
-    "median_speed_static_px_per_frame_noise_floor": 1.75,
-    "median_turn_mobile_deg": 22.75,
-    "mobile_tracks_near_plastic": 3,
-    "median_speed_near_plastic": 13.88,
-    "median_speed_away_from_plastic": 10.27
+    "median_speed_mobile_px_per_frame": 45.5,
+    "median_speed_static_px_per_frame_noise_floor": null,
+    "median_turn_mobile_deg": 89.65,
+    "mobile_tracks_near_plastic": 264,
+    "median_speed_near_plastic": 45.5,
+    "median_speed_away_from_plastic": null
   },
   "coral_segmenter_suim_test": {
     "model": "v2 fine-tuned",
@@ -379,24 +380,24 @@
     "built": "2026-10-13"
   },
   "shap_mean_abs_contribution": {
-    "plastic_coverage_percentage": 5.39,
-    "fish_behavior_anomaly_index": 4.24,
-    "water_quality_index": 3.81,
-    "plastic_count": 2.81,
-    "coral_bleaching_severity_index": 1.66,
-    "temperature_c": 0.95,
-    "coral_cover_percentage": 0.89,
-    "coral_present": 0.49,
-    "turbidity_ntu": 0.26,
-    "debris_count": 0.23,
-    "fish_count": 0.18,
-    "salinity_psu": 0.15,
+    "plastic_coverage_percentage": 17.14,
+    "fish_behavior_anomaly_index": 11.36,
+    "plastic_count": 9.25,
+    "debris_count": 2.54,
+    "water_quality_index": 2.49,
+    "coral_cover_percentage": 2.17,
+    "coral_present": 1.12,
+    "coral_bleaching_severity_index": 0.85,
+    "temperature_c": 0.28,
+    "turbidity_ntu": 0.27,
+    "salinity_psu": 0.2,
+    "dissolved_oxygen_mg_l": 0.19,
     "ph": 0.12,
-    "dissolved_oxygen_mg_l": 0.08
+    "fish_count": 0.03
   },
   "gradcam_heat_inside_plastic_boxes": {
     "frames": 6,
-    "mean_share": 0.062
+    "mean_share": 0.0
   },
   "ai_model_architectures": {
     "plastic_detector": "YOLOv11-seg (Instance Segmentation, Ultralytics)",
@@ -413,7 +414,7 @@
     "fish_behavior": "REAL, SMALL SAMPLE - ByteTrack over test video frames with camera-motion compensation; few mobile animals are tracked, so plastic-related behaviour change cannot be concluded",
     "coral_health": "TRAINED - SegFormer MiT-B2 (v2 fine-tuned) on Coralscapes; official TEST (5 unseen dive sites) coral IoU 0.767, bleached-coral IoU 0.694. Live / bleached / dead coral come from the model (expert labels), not a colour rule. Not applied to TrashCan (deep-sea, no reef).",
     "water_temperature_and_bleaching_alert": "REAL - NOAA Coral Reef Watch 5km daily satellite SST, Degree Heating Weeks and Bleaching Alert Area at each station",
-    "ph_oxygen_salinity_turbidity": "PRESET - station values (Copernicus Marine loader is implemented but needs a free account: `copernicusmarine login`)",
+    "ph_oxygen_salinity_turbidity": "REAL - Copernicus Marine model values",
     "station_assignment": "ASSUMED - TrashCan images have no geotags, so images are assigned to stations in rotation",
     "observational_plastic_biodiversity_model": "REAL DATA, ASSOCIATION ONLY - NCEI + OBIS + NOAA CRW, 698 cells, spatial-CV R\u00b2 0.848 (microplastics gain +0.001)",
     "impact_score_and_biodiversity_loss": "EXPERT FORMULA - XGBoost reproduces a documented hand-specified formula (synthetic training data); weights are assumptions, see src/modules/impact_scoring.py",

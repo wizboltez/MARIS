@@ -114,6 +114,109 @@ def create_interactive_plastic_map(df_stations: pd.DataFrame) -> go.Figure:
     return fig
 
 
+# NCEI Marine Microplastics density classes (pieces/m3), as used on the NCEI map portal
+NCEI_CLASSES = [
+    ("Very low (<0.0005)", 0.0, 0.0005, "#4575b4"),
+    ("Low (0.0005-0.005)", 0.0005, 0.005, "#91bfdb"),
+    ("Medium (0.005-1)", 0.005, 1.0, "#fee090"),
+    ("High (1-10)", 1.0, 10.0, "#fc8d59"),
+    ("Very high (>=10)", 10.0, np.inf, "#d73027"),
+]
+
+
+def ncei_density_class(pieces_m3: pd.Series) -> pd.Series:
+    labels = [c[0] for c in NCEI_CLASSES]
+    bins = [c[1] for c in NCEI_CLASSES] + [np.inf]
+    return pd.cut(pieces_m3, bins=bins, labels=labels, right=False).astype(str)
+
+
+def grid_ncei_samples(df: pd.DataFrame, cell_deg: float = 1.0) -> pd.DataFrame:
+    """Groups samples into cell_deg x cell_deg cells (median concentration per cell), so the
+    map draws ~2,800 dots instead of ~14,600 and stays smooth to pan."""
+    cells = df.assign(
+        lat=(df["lat"] / cell_deg).round() * cell_deg,
+        lon=(df["lon"] / cell_deg).round() * cell_deg,
+    ).groupby(["lat", "lon"])
+    out = cells.agg(
+        pieces_m3=("pieces_m3", "median"),
+        n_samples=("pieces_m3", "size"),
+        n_studies=("reference", "nunique"),
+        year_min=("year", "min"),
+        year_max=("year", "max"),
+    ).reset_index()
+    out["density_class"] = ncei_density_class(out["pieces_m3"])
+    return out
+
+
+NCEI_PERIODS = [
+    ("All years", 1900, 2100),
+    ("1972-1989", 1972, 1989),
+    ("1990-1999", 1990, 1999),
+    ("2000-2009", 2000, 2009),
+    ("2010-2014", 2010, 2014),
+    ("2015-2019", 2015, 2019),
+    ("2020-2024", 2020, 2024),
+]
+
+
+def _ncei_traces(cells: pd.DataFrame) -> list[go.Scattergeo]:
+    traces = []
+    for label, _, _, color in NCEI_CLASSES:
+        d = cells[cells["density_class"] == label]
+        traces.append(go.Scattergeo(
+            lat=d["lat"], lon=d["lon"], mode="markers", name=label,
+            marker=dict(size=5, color=color, opacity=0.85, line=dict(width=0)),
+            customdata=d[["pieces_m3", "n_samples", "n_studies", "year_min", "year_max"]].to_numpy(),
+            hovertemplate=("<b>%{customdata[0]:.4f} pieces/m³</b> (median)<br>"
+                           "%{customdata[1]} samples, %{customdata[2]} studies<br>"
+                           "%{customdata[3]}-%{customdata[4]}<extra></extra>"),
+        ))
+    return traces
+
+
+def create_ncei_microplastics_map(samples: pd.DataFrame) -> go.Figure:
+    """Real measured ocean-surface microplastics (NOAA NCEI), one dot per 1-degree cell
+    (median of the samples in it).
+
+    Filtering happens inside the figure, in the browser: a period slider (animation frames)
+    and legend clicks (density classes). Nothing goes back to Streamlit, so the map never
+    reloads and keeps the user's pan/zoom.
+    """
+    frames = []
+    for label, y0, y1 in NCEI_PERIODS:
+        cells = grid_ncei_samples(samples[samples["year"].between(y0, y1)])
+        title = (f"<b>Measured ocean-surface microplastics (NOAA NCEI)</b> — {label}: "
+                 f"{int(cells['n_samples'].sum()):,} samples")
+        frames.append(go.Frame(name=label, data=_ncei_traces(cells), layout=dict(title_text=title)))
+
+    fig = go.Figure(data=frames[0].data, frames=frames)
+    fig.update_geos(
+        projection_type="natural earth",
+        showocean=True, oceancolor="#0d1b2a", showland=True, landcolor="#1b263b",
+        showcountries=False,  # borders cost ~60% of each redraw; coastlines are enough here
+        coastlinecolor="#415a77", showframe=False, bgcolor="#070d16",
+    )
+    fig.update_layout(
+        title_text=frames[0].layout.title.text,
+        paper_bgcolor="#070d16", plot_bgcolor="#070d16", font=dict(color="#e0e1dd"),
+        title_font=dict(size=16, color="#00d2d3"),
+        legend=dict(title="Median pieces per m³ (click to hide/show)", orientation="h",
+                    yanchor="bottom", y=1.0, xanchor="center", x=0.5, itemsizing="constant"),
+        margin=dict(l=0, r=0, t=90, b=0), height=620,
+        uirevision="ncei",
+        sliders=[dict(
+            active=0, x=0.05, len=0.9, y=0.02, pad=dict(t=0, b=10),
+            currentvalue=dict(prefix="Sampling years: ", font=dict(color="#e0e1dd")),
+            bgcolor="#415a77", activebgcolor="#00d2d3", font=dict(color="#e0e1dd"),
+            steps=[dict(label=label, method="animate",
+                        args=[[label], dict(mode="immediate", frame=dict(duration=0, redraw=True),
+                                            transition=dict(duration=0))])
+                   for label, _, _ in NCEI_PERIODS],
+        )],
+    )
+    return fig
+
+
 def plot_static_pollution_map(df_stations: pd.DataFrame, save_path: str | None = None) -> plt.Figure:
     """Generates a cartographic 2D plot for offline publication and report inclusion."""
     fig, ax = plt.subplots(figsize=(12, 6.5), facecolor="#0e1726")

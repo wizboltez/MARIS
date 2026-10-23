@@ -1,64 +1,94 @@
 {
-  "fetched_utc": "2026-10-12T11:16:14+00:00",
+  "fetched_utc": "2026-10-19T04:45:07+00:00",
   "stations": {
     "Pristine Reef Sanctuary (Coral Triangle)": {
       "noaa_crw": {
         "source": "NOAA Coral Reef Watch 5km daily (CoastWatch ERDDAP)",
-        "sea_surface_temperature_c": 29.05,
-        "date": "2026-10-10",
+        "sea_surface_temperature_c": 29.08,
+        "date": "2026-10-15",
         "pixel_lat": -0.525,
         "pixel_lon": 130.625,
         "degree_heating_weeks": 0.0,
         "bleaching_alert_level_code": 1,
         "bleaching_alert_level": "Bleaching Watch"
+      },
+      "copernicus": {
+        "source": "Copernicus Marine global analysis/forecast (surface, 0.25 deg box)",
+        "ph": 8.014970779418945,
+        "dissolved_oxygen_mg_l": 6.46,
+        "salinity_psu": 34.52388000488281
       }
     },
     "Great Barrier Reef - Outer Reef": {
       "noaa_crw": {
         "source": "NOAA Coral Reef Watch 5km daily (CoastWatch ERDDAP)",
-        "sea_surface_temperature_c": 25.21,
-        "date": "2026-10-10",
+        "sea_surface_temperature_c": 25.76,
+        "date": "2026-10-15",
         "pixel_lat": -16.875,
         "pixel_lon": 146.225,
         "degree_heating_weeks": 0.0,
         "bleaching_alert_level_code": 0,
         "bleaching_alert_level": "No Stress"
+      },
+      "copernicus": {
+        "source": "Copernicus Marine global analysis/forecast (surface, 0.25 deg box)",
+        "ph": 8.030330657958984,
+        "dissolved_oxygen_mg_l": 6.73,
+        "salinity_psu": 35.40059280395508
       }
     },
     "Thermal Stress Hotspot (Bleaching Risk)": {
       "noaa_crw": {
         "source": "NOAA Coral Reef Watch 5km daily (CoastWatch ERDDAP)",
-        "sea_surface_temperature_c": 31.79,
-        "date": "2026-10-10",
+        "sea_surface_temperature_c": 31.7,
+        "date": "2026-10-15",
         "pixel_lat": 21.425,
         "pixel_lon": 38.775,
-        "degree_heating_weeks": 1.19,
-        "bleaching_alert_level_code": 1,
-        "bleaching_alert_level": "Bleaching Watch"
+        "degree_heating_weeks": 1.67,
+        "bleaching_alert_level_code": 2,
+        "bleaching_alert_level": "Bleaching Warning"
+      },
+      "copernicus": {
+        "source": "Copernicus Marine global analysis/forecast (surface, 0.25 deg box)",
+        "ph": 7.90637731552124,
+        "dissolved_oxygen_mg_l": 6.13,
+        "salinity_psu": 37.83995056152344
       }
     },
     "Coastal Harbor & Runoff Zone": {
       "noaa_crw": {
         "source": "NOAA Coral Reef Watch 5km daily (CoastWatch ERDDAP)",
-        "sea_surface_temperature_c": 30.28,
-        "date": "2026-10-10",
+        "sea_surface_temperature_c": 30.14,
+        "date": "2026-10-15",
         "pixel_lat": 14.525,
         "pixel_lon": 120.925,
-        "degree_heating_weeks": 4.79,
-        "bleaching_alert_level_code": 3,
-        "bleaching_alert_level": "Alert Level 1"
+        "degree_heating_weeks": 3.91,
+        "bleaching_alert_level_code": 1,
+        "bleaching_alert_level": "Bleaching Watch"
+      },
+      "copernicus": {
+        "source": "Copernicus Marine global analysis/forecast (surface, 0.25 deg box)",
+        "ph": 8.002351760864258,
+        "dissolved_oxygen_mg_l": 6.95,
+        "salinity_psu": 31.382522583007812
       }
     },
     "Hypoxic Coastal Estuary (Dead Zone Warning)": {
       "noaa_crw": {
         "source": "NOAA Coral Reef Watch 5km daily (CoastWatch ERDDAP)",
-        "sea_surface_temperature_c": 28.49,
-        "date": "2026-10-10",
+        "sea_surface_temperature_c": 28.03,
+        "date": "2026-10-15",
         "pixel_lat": 28.675,
         "pixel_lon": -90.525,
-        "degree_heating_weeks": 7.46,
-        "bleaching_alert_level_code": 1,
-        "bleaching_alert_level": "Bleaching Watch"
+        "degree_heating_weeks": 6.81,
+        "bleaching_alert_level_code": 0,
+        "bleaching_alert_level": "No Stress"
+      },
+      "copernicus": {
+        "source": "Copernicus Marine global analysis/forecast (surface, 0.25 deg box)",
+        "ph": 8.08785343170166,
+        "dissolved_oxygen_mg_l": 6.72,
+        "salinity_psu": 33.43880081176758
       }
     }
   }

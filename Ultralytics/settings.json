@@ -1,0 +1,19 @@
+{
+  "settings_version": "0.0.8",
+  "datasets_dir": "C:\\Users\\Asus\\OneDrive\\Desktop\\sem 5\\datasets",
+  "weights_dir": "C:\\Users\\Asus\\OneDrive\\Desktop\\sem 5\\aiml fa2\\weights",
+  "runs_dir": "C:\\Users\\Asus\\OneDrive\\Desktop\\sem 5\\aiml fa2\\runs",
+  "uuid": "e32f32df2de0c8e7813b170383bea12dffbf3ced8bb748f493bd910d77a6d171",
+  "sync": true,
+  "api_key": "",
+  "openai_api_key": "",
+  "clearml": true,
+  "comet": true,
+  "dvc": true,
+  "mlflow": true,
+  "raytune": true,
+  "tensorboard": false,
+  "wandb": false,
+  "vscode_msg": true,
+  "openvino_msg": true
+}

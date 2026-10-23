@@ -1,0 +1,12 @@
+{
+ "source": "notebooks/colab_fish_cfd_rfdetr.ipynb, run on Colab T4 2026-10-15",
+ "model": "Community Fish Detector RF-DETR Medium 1024 (cfd-2026.05.13), pretrained, no fine-tuning",
+ "test_split": "TrashCan test (53 videos; not in CFD training data)",
+ "matching": "greedy IoU>=0.5",
+ "conf_chosen_on_val": 0.85, "val_f1_at_conf": 0.559,
+ "test": {"precision": 0.128, "recall": 0.079, "f1": 0.098, "tp": 12, "fp": 82, "fn": 139,
+          "precision_ci": [0.0, 0.328], "recall_ci": [0.0, 0.254], "f1_ci": [0.0, 0.229], "ap50": 0.081, "n_fish": 151},
+ "image_level_fish_present": {"accuracy": 0.869, "precision": 0.128, "recall": 0.118, "n_positive": 102, "n_images": 1313,
+                              "always_majority_baseline": 0.922},
+ "baseline_trashcan_test": {"model": "old 16-class detector, conf 0.18", "precision": 0.407, "recall": 0.159, "f1": 0.229}
+}

@@ -1,0 +1,17 @@
+{
+ "source": "notebooks/colab_ozfish_eval.ipynb, run on Colab T4 2026-10-15",
+ "dataset": "OzFish bounding boxes (1,758 frames, 43,572 boxes); split by camera drop 30% val / 70% test",
+ "test_frames": 1144,
+ "test_drops": 399,
+ "test_fish": 27802,
+ "matching": "greedy IoU>=0.5",
+ "models": {
+  "CFD RF-DETR Medium (pretrained)": {
+   "conf_chosen_on_val": 0.2, "val_f1": 0.663,
+   "precision": 0.767, "recall": 0.593, "f1": 0.669, "ap50": 0.659,
+   "tp": 16478, "fp": 5006, "fn": 11324,
+   "precision_ci": [0.755, 0.779], "recall_ci": [0.563, 0.621], "f1_ci": [0.648, 0.687]
+  }
+ },
+ "note": "Our detectors (best_fish.pt, best_model.pt) were not uploaded for this run, so no comparison on OzFish yet."
+}

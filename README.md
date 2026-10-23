@@ -68,15 +68,29 @@ OBIS · Copernicus Marine · Allen Coral Atlas — details, licences and citatio
 
 ## Run it
 
-```bash
-python -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
-.venv\Scripts\python.exe -m streamlit run app.py          # dashboard on http://localhost:8501
-.venv\Scripts\python.exe -m src.run_assessment            # batch pipeline -> CSV, figures, report
-```
+Commands are for Windows, run from the project folder.
 
-Model weights over 100 MB are not in git: the coral model (`models/coral_segmenter/coralscapes_segformer_v2/model.safetensors`)
-is on Google Drive; without it the app falls back automatically. See [GUIDE.md](GUIDE.md) for the full walkthrough.
+1. **Create the virtual environment** (first time only):
+   ```bash
+   python -m venv .venv
+   ```
+2. **Install dependencies** (first time, or when `requirements.txt` changes):
+   ```bash
+   .venv\Scripts\pip install -r requirements.txt
+   ```
+3. **Get the coral model weights.** Files over 100 MB are not in git. Download
+   `models/coral_segmenter/coralscapes_segformer_v2/model.safetensors` from Google Drive and put it at that path.
+   Without it the app automatically uses a fallback instead.
+4. **Start the dashboard.** It opens at http://localhost:8501:
+   ```bash
+   .venv\Scripts\python.exe -m streamlit run app.py
+   ```
+5. **Optional: run the batch pipeline.** This writes CSVs, figures and the report to `outputs/`:
+   ```bash
+   .venv\Scripts\python.exe -m src.run_assessment
+   ```
+
+See [GUIDE.md](GUIDE.md) for the full walkthrough.
 
 ## Repository map
 

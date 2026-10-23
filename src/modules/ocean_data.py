@@ -103,8 +103,8 @@ def fetch_copernicus(lat: float, lon: float) -> dict | None:
         return None
 
     def latest_mean(ds, var):
-        v = ds[var].isel(time=-1).mean(skipna=True).item()
-        return None if v is None or math.isnan(v) else float(v)
+        v = float(ds[var].isel(time=-1).mean(skipna=True).compute())  # data is lazy (dask)
+        return None if math.isnan(v) else v
 
     o2_mmol_m3 = latest_mean(oxy, "o2")
     return {
@@ -116,6 +116,7 @@ def fetch_copernicus(lat: float, lon: float) -> dict | None:
 
 
 def refresh_cache(stations: dict) -> dict:
+    previous = load_cache().get("stations", {})
     data = {"fetched_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"), "stations": {}}
     for name, st in stations.items():
         print(f"      {name}: ", end="", flush=True)
@@ -125,7 +126,9 @@ def refresh_cache(stations: dict) -> dict:
             print(f"SST {entry['noaa_crw'].get('sea_surface_temperature_c')} C, "
                   f"DHW {entry['noaa_crw'].get('degree_heating_weeks')}, {entry['noaa_crw'].get('bleaching_alert_level')}")
         except Exception as exc:
-            print(f"NOAA fetch failed ({exc})")
+            print(f"NOAA fetch failed ({exc}); keeping the previous values")
+            if "noaa_crw" in previous.get(name, {}):
+                entry["noaa_crw"] = previous[name]["noaa_crw"]
         cop = fetch_copernicus(st["latitude"], st["longitude"])
         if cop:
             entry["copernicus"] = cop

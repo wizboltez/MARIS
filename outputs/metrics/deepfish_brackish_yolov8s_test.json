@@ -1,0 +1,37 @@
+{
+ "source": "src/evaluation/deepfish_brackish_eval.py, run locally 2026-10-15",
+ "model": "dronefreak/brackish-yolov8s (Hugging Face), pretrained on Brackish only, no fine-tuning; classes fish + small_fish counted as fish",
+ "model_reported_score": "Brackish test mAP50 0.993 (model card, its own dataset)",
+ "dataset": "DeepFish test set with boxes from the YOLO-Fish authors (909 frames); split by video clip 30% val (threshold only) / 70% test",
+ "test_frames": 758,
+ "test_clips": 35,
+ "test_fish": 2767,
+ "matching": "greedy IoU>=0.5",
+ "ap50_all_909_frames": 0.005,
+ "test": {
+  "conf_chosen_on_val": 0.35,
+  "val_f1": 0.035,
+  "precision": 0.047,
+  "recall": 0.023,
+  "f1": 0.031,
+  "ap50": 0.005,
+  "tp": 65,
+  "fp": 1312,
+  "fn": 2702,
+  "precision_ci": [
+   0.01,
+   0.145
+  ],
+  "recall_ci": [
+   0.005,
+   0.063
+  ],
+  "f1_ci": [
+   0.007,
+   0.084
+  ],
+  "image_level_fish_present_accuracy": 0.708,
+  "images_with_fish": 758,
+  "images_total": 758
+ }
+}

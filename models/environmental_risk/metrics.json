@@ -1,0 +1,41 @@
+{
+  "source": "notebooks/marine_pollution_prediction.ipynb on branch environmental-risk-module (AnannyaJadhav, commit ce03377, run 2026-10-14). Values copied from the notebook's printed outputs.",
+  "region": "Gulf of Mannar / Palk Bay (Allen Coral Atlas polygon)",
+  "study_window": "2026-08-04 to 2026-10-02 (60 days)",
+  "n_sites": 245,
+  "grid_km": 9.2,
+  "radius_km": 10,
+  "data_sources": {
+    "ocean": "Copernicus Marine global analysis: currents (uo, vo), sea temperature (thetao), wave height (VHM0)",
+    "biodiversity": "OBIS occurrence records since 2000: 6,208 raw, 5,254 after cleaning, 3,536 species",
+    "habitat": "Allen Coral Atlas benthic map"
+  },
+  "target": "log1p(species_richness) within 10 km of each site",
+  "features": ["current_speed", "wave_height", "temperature", "habitat_sens", "coral_cover_frac", "seagrass_frac", "coral_dist_km"],
+  "xgboost_cv_r2_mean": 0.385,
+  "xgboost_cv_r2_folds": [0.179, 0.444, 0.28, 0.426, 0.595],
+  "xgboost_test_r2": 0.157,
+  "xgboost_nested_cv_r2_mean": 0.325,
+  "xgboost_nested_cv_r2_folds": [0.114, 0.295, 0.295, 0.485, 0.435],
+  "random_forest_cv_r2_mean": 0.427,
+  "random_forest_cv_r2_folds": [0.281, 0.532, 0.279, 0.526, 0.515],
+  "mean_abs_shap": {
+    "habitat_sens": 0.411,
+    "wave_height": 0.359,
+    "seagrass_frac": 0.35,
+    "coral_dist_km": 0.331,
+    "current_speed": 0.303,
+    "temperature": 0.192,
+    "coral_cover_frac": 0.06
+  },
+  "learned_value_weights": {"habitat_sens": 0.357, "seagrass_frac": 0.304, "coral_cover_frac": 0.052, "coral_dist_km": 0.287},
+  "learned_exposure_weights": {"current_speed": 0.355, "wave_height": 0.42, "temperature": 0.225},
+  "weight_robustness_spearman": {"mean": 0.991, "p5": 0.968, "min": 0.877, "trials": 500},
+  "limitations": [
+    "No plastic data in the score yet (plastic_risk is 0 for every site).",
+    "IUCN Red List field is empty in the OBIS download, so sensitive_species is 0 everywhere.",
+    "115 of 245 sites have no OBIS records within 10 km, so richness partly reflects survey effort.",
+    "Habitat sensitivity weights (coral 1.0, seagrass 0.8, rubble 0.4, rock 0.3, sand 0.1) are assumptions.",
+    "Random K-fold CV on neighbouring grid cells is optimistic; held-out test R2 is 0.157."
+  ]
+}
